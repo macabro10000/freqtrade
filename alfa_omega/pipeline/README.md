@@ -1,0 +1,21 @@
+# PIPELINE
+
+Orquestación del sistema ALFA OMEGA TRADING.
+
+Flujo previsto:
+
+DATA
+↓
+VALIDATION
+↓
+FEATURES
+↓
+SMC
+↓
+MODELS
+↓
+BACKTEST
+↓
+WALK-FORWARD
+↓
+SIGNAL ENGINE
