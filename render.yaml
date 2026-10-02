@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: alfa-omega-trading
+    runtime: python
+    plan: free
+    branch: alfa-omega-rebuild
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: uvicorn alfa_omega.render_service:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.13.15"
+      - key: ALPACA_PAPER
+        value: "true"
+      - key: ALPACA_API_KEY
+        sync: false
+      - key: ALPACA_SECRET_KEY
+        sync: false
+      - key: ALPACA_TRADING_URL
+        value: "https://paper-api.alpaca.markets"
