@@ -17,7 +17,10 @@ from alfa_omega.execution.alpaca_paper import AlpacaPaperAdapter
 from alfa_omega.features.feature_engine import build_features
 from alfa_omega.features.multi_timeframe import build_market_map, describe_hierarchy
 from alfa_omega.features.proprietary_engine import build_proprietary_features
-from alfa_omega.intelligence.market_intelligence import build_market_intelligence, latest_market_state
+from alfa_omega.intelligence.market_intelligence import (
+    build_market_intelligence,
+    latest_market_state,
+)
 from alfa_omega.smc.structure_engine import build_structure_features
 
 app = FastAPI(
