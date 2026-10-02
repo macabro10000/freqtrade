@@ -141,7 +141,13 @@ def evaluate_candidate(
     ).reindex(sample.index)
     labels = labels.loc[labels["label_long_outcome"].notna()]
     if labels.empty:
-        return {"strategy_id": candidate.strategy_id, "trades": 0, "win_rate": 0.0, "expectancy_r": 0.0, "profit_factor": 0.0}
+        return {
+            "strategy_id": candidate.strategy_id,
+            "trades": 0,
+            "win_rate": 0.0,
+            "expectancy_r": 0.0,
+            "profit_factor": 0.0,
+        }
 
     wins = labels["label_long_outcome"].eq("TARGET")
     losses = labels["label_long_outcome"].eq("STOP")
