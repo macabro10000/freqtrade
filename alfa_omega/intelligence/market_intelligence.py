@@ -87,7 +87,7 @@ def build_market_intelligence(df: pd.DataFrame) -> pd.DataFrame:
     htf_count = pd.Series(0, index=out.index, dtype="int64")
     for column in htf_columns:
         values = pd.to_numeric(out[column], errors="coerce")
-        direction = values.where(values.isin([0, 1]), pd.NA)
+        _direction = values.where(values.isin([0, 1]), pd.NA)
         # htf direction is 1 for bullish and 0 for non-bullish; derive bearish
         # from close/open when available.
         tf = column.removeprefix("htf_").removesuffix("_direction")
