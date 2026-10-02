@@ -1,9 +1,8 @@
 """Leakage-resistant experiment validation for ALFA OMEGA.
 
-Runs a deterministic chronological train/OOS evaluation for a research
+Runs deterministic chronological train/OOS evaluation for a research
 candidate. It never trains models or executes orders.
 """
-
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
@@ -12,11 +11,7 @@ import pandas as pd
 from alfa_omega.research.experiment_evaluator import evaluate_experiment
 from alfa_omega.research.experiment_runner import ExperimentResult, ExperimentSpec
 from alfa_omega.research.strategy_discovery import StrategyCandidate
-from alfa_omega.research.validation import (
-    audit_feature_names,
-    label_intervals,
-    temporal_train_test_split,
-)
+from alfa_omega.research.validation import audit_feature_names, label_intervals
 
 
 @dataclass(frozen=True)
@@ -40,8 +35,7 @@ class ValidationResult:
 def _timeframe_delta(index: pd.DatetimeIndex) -> pd.Timedelta:
     if len(index) < 2:
         raise ValueError("validation requires at least two timestamps")
-    deltas = index.to_series().diff().dropna()
-    delta = deltas.median()
+    delta = index.to_series().diff().dropna().median()
     if pd.isna(delta) or delta <= pd.Timedelta(0):
         raise ValueError("could not infer a positive timeframe interval")
     return pd.Timedelta(delta)
@@ -55,11 +49,6 @@ def validate_experiment(
     test_fraction: float = 0.20,
     embargo_bars: int | None = None,
 ) -> ValidationResult:
-    """Evaluate train/OOS chronologically with purge + embargo.
-
-    The final chronological block is OOS. Training rows whose label interval
-    touches the OOS window (plus embargo) are removed before evaluation.
-    """
     if not 0.05 <= test_fraction < 0.50:
         raise ValueError("test_fraction must be in [0.05, 0.50)")
     if df.empty:
@@ -74,32 +63,35 @@ def validate_experiment(
     audit = audit_feature_names(list(df.columns))
     delta = _timeframe_delta(df.index)
     horizon = max(1, int(candidate.horizon_bars))
-    purge_bars = horizon
     embargo = max(0, embargo_bars if embargo_bars is not None else horizon)
+
     test_start_pos = max(1, int(len(df) * (1.0 - test_fraction)))
     test_start = df.index[test_start_pos]
     test_end = df.index[-1]
+    embargo_end = test_start + delta * embargo
 
     intervals = label_intervals(df.index, horizon)
-    samples = intervals.join(df, how="left")
-    train, test = temporal_train_test_split(
-        samples,
-        test_start=test_start,
-        test_end=test_end,
-        embargo=delta * embargo,
+    # A training observation is valid only if:
+    # 1) its prediction timestamp is strictly before OOS;
+    # 2) its label interval ends strictly before OOS;
+    # 3) it is outside the explicit embargo window.
+    train_mask = (
+        (intervals.index < test_start)
+        & intervals["label_end"].notna()
+        & (intervals["label_end"] < test_start)
+        & (intervals.index < test_start - delta * embargo)
     )
-
-    # Keep only timestamps that belong to the original feature frame.
-    train_df = df.loc[df.index.intersection(train.index)]
-    test_df = df.loc[df.index.intersection(test.index)]
+    train_df = df.loc[train_mask]
+    test_df = df.loc[(df.index >= test_start) & (df.index <= test_end)]
 
     train_snapshot = evaluate_experiment(spec, train_df, candidate)
     test_snapshot = evaluate_experiment(spec, test_df, candidate)
 
-    notes: list[str] = [
+    notes = [
         "STRICT_TEMPORAL_SPLIT applied",
-        f"PURGED_EMBARGO applied: horizon_bars={purge_bars}, embargo_bars={embargo}",
+        f"PURGED_EMBARGO applied: horizon_bars={horizon}, embargo_bars={embargo}",
         "OOS is the final chronological block",
+        "Training timestamps and label intervals are explicitly separated from OOS",
     ]
     if not audit["ok"]:
         notes.append("feature-name audit flagged columns for review")
@@ -130,9 +122,7 @@ def validate_experiment(
     )
 
 
-def validation_to_result(
-    value: ValidationResult,
-) -> ExperimentResult:
+def validation_to_result(value: ValidationResult) -> ExperimentResult:
     metrics = {
         "train_rows": float(value.train_rows),
         "test_rows": float(value.test_rows),
