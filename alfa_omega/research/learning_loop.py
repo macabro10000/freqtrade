@@ -7,9 +7,9 @@ strategies/indicators remain candidates until independently validated.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, asdict
-from datetime import UTC, datetime
 from collections.abc import Iterable, Sequence
+from dataclasses import asdict, dataclass
+from datetime import UTC, datetime
 
 
 @dataclass(frozen=True)
