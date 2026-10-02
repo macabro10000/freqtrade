@@ -72,7 +72,8 @@ def generate_hypotheses(
         for combo in combinations(names, size):
             source = tuple(combo)
             rationale = tuple(
-                f"{name}: n={evidence[name].occurrences}, expectancy={evidence[name].expectancy_r:.4f}R"
+                f"{name}: n={evidence[name].occurrences}, "
+                f"expectancy={evidence[name].expectancy_r:.4f}R"
                 for name in combo
             )
             question = (
