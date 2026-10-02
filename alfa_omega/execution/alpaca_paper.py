@@ -10,14 +10,18 @@ LIVE credentials are never accepted by this adapter.
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from typing import Any
 
 from alpaca.data.historical import CryptoHistoricalDataClient
 from alpaca.data.requests import CryptoLatestTradeRequest
 from alpaca.trading.client import TradingClient
 from alpaca.trading.enums import OrderSide, TimeInForce
-from alpaca.trading.requests import LimitOrderRequest, MarketOrderRequest, StopLimitOrderRequest
+from alpaca.trading.requests import (
+    LimitOrderRequest,
+    MarketOrderRequest,
+    StopLimitOrderRequest,
+)
 
 
 class AlpacaPaperConfigurationError(RuntimeError):
