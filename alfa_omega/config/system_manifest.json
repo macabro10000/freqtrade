@@ -1,11 +1,26 @@
 {
   "project": "ALFA OMEGA TRADING",
-  "phase": "REBUILD_FOUNDATION",
+  "phase": "REBUILD_FOUNDATION_EXECUTION_READY",
   "markets": ["BTC/USD", "XAU/USD"],
   "decision_timeframes": ["5m", "15m", "1h", "4h", "1d"],
   "data_timeframes": ["1m", "5m", "15m", "1h", "4h", "1d", "1w"],
-  "execution_enabled": false,
-  "learning_enabled": false,
+  "execution": {
+    "architecture_enabled": true,
+    "live_execution_enabled": false,
+    "paper_execution_enabled": false,
+    "research_execution_enabled": true,
+    "default_mode": "RESEARCH",
+    "allowed_modes": ["RESEARCH", "PAPER", "LIVE"],
+    "live_requires_explicit_enable": true,
+    "live_requires_safety_gate": true,
+    "live_requires_risk_limits": true
+  },
+  "learning": {
+    "enabled": false,
+    "paper_results_can_be_ingested": true,
+    "live_results_can_be_ingested": true,
+    "automatic_model_promotion": false
+  },
   "proprietary_indicators": {
     "count": 3,
     "status": "PENDING_INTEGRATION"
@@ -19,6 +34,14 @@
     "lookahead_protection": true,
     "walk_forward_required": true,
     "out_of_sample_required": true
+  },
+  "safety": {
+    "kill_switch": true,
+    "max_daily_loss_required": true,
+    "max_position_risk_required": true,
+    "max_open_positions_required": true,
+    "credential_separation_required": true,
+    "paper_live_credential_separation_required": true
   },
   "source_of_truth": "alfa_omega"
 }
