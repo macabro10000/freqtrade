@@ -42,7 +42,7 @@ def evaluate_regime_stress(
         raise ValueError("min_trades_per_regime must be positive")
 
     grouped: dict[str, list[float]] = {}
-    for regime, value in zip(regimes, r_values):
+    for regime, value in zip(regimes, r_values, strict=True):
         grouped.setdefault(str(regime), []).append(float(value))
 
     metrics: list[RegimeMetrics] = []
