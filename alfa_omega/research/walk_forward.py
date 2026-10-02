@@ -10,6 +10,8 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 import pandas as pd
 
+from alfa_omega.research.event_labels import EventLabelArtifact, build_event_label_artifact
+
 from alfa_omega.research.experiment_evaluator import evaluate_experiment
 from alfa_omega.research.experiment_runner import ExperimentResult, ExperimentSpec
 from alfa_omega.research.strategy_discovery import StrategyCandidate
@@ -97,6 +99,7 @@ def walk_forward_validate(
     test_size: int | None = None,
     min_train_size: int | None = None,
     embargo_bars: int | None = None,
+    event_labels: EventLabelArtifact | None = None,
 ) -> WalkForwardResult:
     """Run expanding-window walk-forward evaluation.
 
@@ -112,6 +115,14 @@ def walk_forward_validate(
     if min_train_size is None:
         min_train_size = max(horizon + 1, len(df) // 3)
     embargo = max(0, embargo_bars if embargo_bars is not None else horizon)
+
+    if event_labels is None:
+        event_labels = build_event_label_artifact(
+            df,
+            horizon_bars=candidate.horizon_bars,
+            stop_atr=candidate.stop_atr,
+            target_atr=candidate.target_atr,
+        )
 
     bounds = _fold_bounds(
         len(df),
@@ -157,7 +168,9 @@ def walk_forward_validate(
 
         train_df = df.loc[train_index]
         test_df = df.loc[test_index]
-        snapshot = evaluate_experiment(spec, test_df, candidate)
+        snapshot = evaluate_experiment(
+            spec, test_df, candidate, event_labels=event_labels
+        )
 
         folds.append(
             WalkForwardFold(
