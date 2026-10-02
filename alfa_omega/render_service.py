@@ -245,14 +245,24 @@ def execution_status() -> dict[str, Any]:
     }
 
 
-@app.post("/api/v1/paper/smoke-cycle")
-def paper_smoke_cycle(notional_usd: float = 10.0) -> JSONResponse:
-    """Controlled connectivity test: tiny BTC buy followed by sell.
+@app.get("/api/v1/paper/smoke-cycle")
+def paper_smoke_cycle(confirm: str = "") -> JSONResponse:
+    """Temporary browser-triggered Paper connectivity test.
 
-    This is not a strategy and is separately gated by environment variables.
+    This is not a strategy. It is separately gated by environment variables
+    and requires an explicit confirmation token to reduce accidental calls.
+    The route is temporary and must be removed after the controlled test.
     """
+    if confirm != "ALFA-OMEGA-PAPER-10":
+        return JSONResponse(
+            status_code=400,
+            content={
+                "status": "confirmation_required",
+                "message": "Use the explicit Paper test confirmation token.",
+            },
+        )
     try:
-        result = adapter.run_smoke_cycle(notional_usd=notional_usd)
+        result = adapter.run_smoke_cycle(notional_usd=10.0)
         return JSONResponse(status_code=200, content=result)
     except Exception as exc:
         return JSONResponse(
