@@ -253,7 +253,7 @@ def paper_smoke_cycle(confirm: str = "") -> JSONResponse:
     and requires an explicit confirmation token to reduce accidental calls.
     The route is temporary and must be removed after the controlled test.
     """
-    if confirm != "ALFA-OMEGA-PAPER-10":
+    if confirm != "ALFA-OMEGA-PAPER-20":
         return JSONResponse(
             status_code=400,
             content={
@@ -262,7 +262,7 @@ def paper_smoke_cycle(confirm: str = "") -> JSONResponse:
             },
         )
     try:
-        result = adapter.run_smoke_cycle(notional_usd=10.0)
+        result = adapter.run_smoke_cycle(notional_usd=20.0)
         return JSONResponse(status_code=200, content=result)
     except Exception as exc:
         return JSONResponse(
