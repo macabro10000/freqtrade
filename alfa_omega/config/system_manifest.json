@@ -1,21 +1,44 @@
 {
   "project": "ALFA OMEGA TRADING",
   "phase": "CONTROLLED_PAPER_EXECUTION_PREPARATION",
-  "markets": ["BTC/USD", "XAU/USD"],
-  "decision_timeframes": ["5m", "15m", "1h", "4h", "1d"],
-  "data_timeframes": ["1m", "5m", "15m", "1h", "4h", "1d", "1w"],
+  "markets": [
+    "BTC/USD",
+    "XAU/USD"
+  ],
+  "decision_timeframes": [
+    "5m",
+    "15m",
+    "1h",
+    "4h",
+    "1d"
+  ],
+  "data_timeframes": [
+    "1m",
+    "5m",
+    "15m",
+    "1h",
+    "4h",
+    "1d",
+    "1w"
+  ],
   "execution": {
     "architecture_enabled": true,
     "live_execution_enabled": false,
     "paper_execution_enabled": false,
     "research_execution_enabled": true,
     "default_mode": "RESEARCH",
-    "allowed_modes": ["RESEARCH", "PAPER", "LIVE"],
+    "allowed_modes": [
+      "RESEARCH",
+      "PAPER",
+      "LIVE"
+    ],
     "live_requires_explicit_enable": true,
     "live_requires_safety_gate": true,
     "live_requires_risk_limits": true,
     "paper_provider": "alpaca",
-    "paper_markets": ["BTC/USD"],
+    "paper_markets": [
+      "BTC/USD"
+    ],
     "paper_adapter": "alfa_omega.execution.alpaca_paper.AlpacaPaperAdapter",
     "paper_validation_status": "CONTROLLED_SUBMISSION_IMPLEMENTED_BUT_DISABLED"
   },
@@ -23,15 +46,21 @@
     "max_position_risk_fraction": 0.005,
     "max_daily_loss_fraction": 0.02,
     "max_open_positions": 1,
-    "max_notional_fraction": 0.10
+    "max_notional_fraction": 0.1
   },
   "learning": {
     "enabled": false,
     "paper_results_can_be_ingested": true,
     "automatic_model_promotion": false
   },
-  "proprietary_indicators": {"count": 3},
-  "model": {"ml": true, "freqai": true, "status": "PENDING_TRAINING"},
+  "proprietary_indicators": {
+    "count": 3
+  },
+  "model": {
+    "ml": true,
+    "freqai": true,
+    "status": "PENDING_TRAINING"
+  },
   "validation": {
     "lookahead_protection": true,
     "walk_forward_required": true,
@@ -50,5 +79,27 @@
     "ALPACA_API_KEY": "environment_only",
     "ALPACA_SECRET_KEY": "environment_only",
     "ALPACA_PAPER": "true"
+  },
+  "research": {
+    "internet_research_enabled": true,
+    "external_sources_are_evidence_only": true,
+    "indicator_discovery_enabled": true,
+    "indicator_candidates_require_oos": true,
+    "walk_forward_required": true,
+    "cost_aware_required": true,
+    "regime_stress_required": true,
+    "continuous_monitoring_required": true
+  },
+  "market_context": {
+    "session_features_enabled": true,
+    "session_timezone_source": "IANA time zones",
+    "sessions": [
+      "SYDNEY",
+      "TOKYO",
+      "LONDON",
+      "NEW_YORK"
+    ],
+    "dst_aware": true,
+    "market_calendar_required": true
   }
 }
