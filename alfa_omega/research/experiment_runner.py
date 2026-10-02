@@ -1,8 +1,7 @@
 """Controlled experiment runner for ALFA OMEGA research.
 
-This layer orchestrates hypothesis evaluation without trading or self-modifying
-production code. It records the experiment contract and delegates actual
-backtest/validation work to explicit research components.
+This layer records the complete experiment contract so validation cannot
+silently change barrier geometry or horizon parameters.
 """
 
 from __future__ import annotations
@@ -25,6 +24,9 @@ class ExperimentSpec:
     feature_version: str
     label_version: str
     validation_plan: tuple[str, ...]
+    horizon_bars: int
+    stop_atr: float
+    target_atr: float
     status: str = "PLANNED"
 
 
@@ -42,6 +44,9 @@ def build_experiment(
     dataset_fingerprint: str,
     feature_version: str,
     label_version: str,
+    horizon_bars: int = 5,
+    stop_atr: float = 1.0,
+    target_atr: float = 2.0,
     validation_plan: Sequence[str] = (
         "STRICT_TEMPORAL_SPLIT",
         "PURGED_EMBARGO",
@@ -51,13 +56,23 @@ def build_experiment(
         "REGIME_STRESS",
     ),
 ) -> ExperimentSpec:
-    payload = "|".join([
-        hypothesis.hypothesis_id,
-        dataset_fingerprint,
-        feature_version,
-        label_version,
-        *validation_plan,
-    ])
+    if horizon_bars < 1:
+        raise ValueError("horizon_bars must be >= 1")
+    if stop_atr <= 0 or target_atr <= 0:
+        raise ValueError("barrier distances must be positive")
+
+    payload = "|".join(
+        [
+            hypothesis.hypothesis_id,
+            dataset_fingerprint,
+            feature_version,
+            label_version,
+            str(horizon_bars),
+            str(stop_atr),
+            str(target_atr),
+            *validation_plan,
+        ]
+    )
     experiment_id = "EXP-" + sha256(payload.encode("utf-8")).hexdigest()[:12].upper()
     return ExperimentSpec(
         experiment_id=experiment_id,
@@ -69,6 +84,9 @@ def build_experiment(
         feature_version=feature_version,
         label_version=label_version,
         validation_plan=tuple(validation_plan),
+        horizon_bars=horizon_bars,
+        stop_atr=stop_atr,
+        target_atr=target_atr,
     )
 
 
