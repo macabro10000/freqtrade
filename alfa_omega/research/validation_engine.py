@@ -68,7 +68,6 @@ def validate_experiment(
     test_start_pos = max(1, int(len(df) * (1.0 - test_fraction)))
     test_start = df.index[test_start_pos]
     test_end = df.index[-1]
-    embargo_end = test_start + delta * embargo
 
     intervals = label_intervals(df.index, horizon)
     # A training observation is valid only if:
