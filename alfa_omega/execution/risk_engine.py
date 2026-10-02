@@ -75,6 +75,12 @@ class RiskEngine:
             entry_price=entry_price,
             stop_loss=stop_loss,
         )
+        notional_cap = (
+            equity * self.limits.max_notional_fraction / entry_price
+            if equity > 0 and entry_price > 0
+            else 0.0
+        )
+        calculated_quantity = min(calculated_quantity, notional_cap) if notional_cap > 0 else 0.0
         quantity = calculated_quantity if requested_quantity is None else requested_quantity
 
         if quantity <= 0:
