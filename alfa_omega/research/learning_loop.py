@@ -8,8 +8,8 @@ strategies/indicators remain candidates until independently validated.
 from __future__ import annotations
 
 from dataclasses import dataclass, asdict
-from datetime import datetime, timezone
-from typing import Iterable, Sequence
+from datetime import UTC, datetime
+from collections.abc import Iterable, Sequence
 
 
 @dataclass(frozen=True)
@@ -68,7 +68,7 @@ def build_experience_record(*, experience_id: str, market: str, timeframe: str, 
     """Create normalized immutable experience; it never changes execution policy."""
     return ExperienceRecord(
         experience_id=experience_id,
-        timestamp=timestamp or datetime.now(timezone.utc).isoformat(),
+        timestamp=timestamp or datetime.now(UTC).isoformat(),
         market=market,
         timeframe=timeframe,
         regime=regime,
