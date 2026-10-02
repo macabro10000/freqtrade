@@ -1,14 +1,24 @@
 # BACKTESTS
 
-Resultados de backtesting.
+Experimentos reproducibles.
 
-Cada prueba deberá registrar:
-
-- periodo
+Registrar:
 - mercado
 - timeframe
+- periodo
 - estrategia
-- parámetros
-- número de operaciones
-- métricas
+- versión de features
 - versión del modelo
+- parámetros
+- operaciones
+- win rate
+- profit factor
+- expectancy
+- drawdown
+- retorno
+- distribución de R
+- tiempo medio de operación
+- resultado fuera de muestra
+- resultado walk-forward
+
+Un único backtest optimizado sobre todo el histórico no se considera evidencia suficiente.
