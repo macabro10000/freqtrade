@@ -71,3 +71,13 @@ CREATED
 ExecutionResult puede convertirse en datos de investigación después de validación y etiquetado.
 
 Nunca se debe modificar retrospectivamente una operación para mejorar artificialmente un dataset.
+
+## Current implementation
+
+The execution foundation now includes:
+
+- `risk_engine.py`: deterministic position, daily-loss, open-position and notional limits;
+- `safety_gate.py`: final pre-execution checks and explicit LIVE block;
+- `execution_service.py`: coordinates Risk Engine and Safety Gate without broker access.
+
+The service can authorize a safe PAPER intent, but the Alpaca adapter remains read-only. No order can be submitted in this phase.
