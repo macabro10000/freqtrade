@@ -8,7 +8,7 @@ learn which states matter across markets and regimes.
 from __future__ import annotations
 
 import hashlib
-from typing import Sequence
+from collections.abc import Sequence
 
 import pandas as pd
 
