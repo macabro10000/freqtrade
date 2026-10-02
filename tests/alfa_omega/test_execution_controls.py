@@ -54,11 +54,11 @@ def test_risk_budget_rejects_oversized_requested_quantity():
     ],
 )
 def test_safety_rejects_unsafe_requests(kwargs, reason):
-    base = dict(
+    base = {
         market="BTC/USD", side="LONG", entry_price=100_000.0,
         stop_loss=99_000.0, take_profit=101_000.0, quantity=0.1,
         equity=100_000.0, mode="PAPER",
-    )
+    }
     base.update(kwargs)
     result = ExecutionService().authorize(ExecutionRequest(**base))
     assert reason in result["safety"]["reasons"] or reason in result["risk"]["reasons"]
