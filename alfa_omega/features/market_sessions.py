@@ -8,7 +8,7 @@ trade signal.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, time
+from datetime import time
 from zoneinfo import ZoneInfo
 
 import pandas as pd
