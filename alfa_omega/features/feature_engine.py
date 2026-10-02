@@ -40,7 +40,9 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
 
     out["return_1"] = out["close"].pct_change()
     ratio = out["close"] / prev_close
-    out["log_return_1"] = ratio.where(ratio > 0.0).map(lambda x: math.log(x) if pd.notna(x) else pd.NA)
+    out["log_return_1"] = ratio.where(ratio > 0.0).map(
+        lambda x: math.log(x) if pd.notna(x) else pd.NA
+    )
     out["range_pct"] = candle_range / out["close"].replace(0, pd.NA)
     out["body_pct"] = body / out["close"].replace(0, pd.NA)
     out["body_ratio"] = body.abs() / candle_range
@@ -74,13 +76,16 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
 
     prior_high_20 = out["high"].rolling(20, min_periods=20).max().shift(1)
     prior_low_20 = out["low"].rolling(20, min_periods=20).min().shift(1)
-    prior_high_5 = out["high"].rolling(5, min_periods=5).max().shift(1)
-    prior_low_5 = out["low"].rolling(5, min_periods=5).min().shift(1)
     out["breakout_high_20"] = (out["close"] > prior_high_20).astype(int)
     out["breakdown_low_20"] = (out["close"] < prior_low_20).astype(int)
-    out["sweep_high_20"] = ((out["high"] > prior_high_20) & (out["close"] < prior_high_20)).astype(int)
+    out["sweep_high_20"] = (
+        (out["high"] > prior_high_20) & (out["close"] < prior_high_20)
+    ).astype(int)
     out["sweep_low_20"] = ((out["low"] < prior_low_20) & (out["close"] > prior_low_20)).astype(int)
-    out["range_expansion"] = (candle_range > candle_range.rolling(20, min_periods=20).mean().shift(1) * 1.5).astype(int)
+    out["range_expansion"] = (
+        candle_range
+        > candle_range.rolling(20, min_periods=20).mean().shift(1) * 1.5
+    ).astype(int)
 
     out["fvg_bullish"] = (out["low"] > out["high"].shift(2)).astype(int)
     out["fvg_bearish"] = (out["high"] < out["low"].shift(2)).astype(int)
