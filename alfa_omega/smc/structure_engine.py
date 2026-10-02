@@ -62,8 +62,14 @@ def build_structure_features(df: pd.DataFrame, swing_window: int = 3) -> pd.Data
 
     out["liquidity_high_20"] = out["high"].rolling(20, min_periods=20).max().shift(1)
     out["liquidity_low_20"] = out["low"].rolling(20, min_periods=20).min().shift(1)
-    out["liquidity_sweep_high"] = ((out["high"] > out["liquidity_high_20"]) & (out["close"] < out["liquidity_high_20"])).astype(int)
-    out["liquidity_sweep_low"] = ((out["low"] < out["liquidity_low_20"]) & (out["close"] > out["liquidity_low_20"])).astype(int)
+    out["liquidity_sweep_high"] = (
+        (out["high"] > out["liquidity_high_20"])
+        & (out["close"] < out["liquidity_high_20"])
+    ).astype(int)
+    out["liquidity_sweep_low"] = (
+        (out["low"] < out["liquidity_low_20"])
+        & (out["close"] > out["liquidity_low_20"])
+    ).astype(int)
 
     # Three-candle fair-value-gap conditions. Only the current candle and two
     # already closed candles are referenced.
