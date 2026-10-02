@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, asdict
 from itertools import combinations
-from typing import Iterable
+from collections.abc import Iterable
 
 import pandas as pd
 
@@ -107,7 +107,7 @@ def discover_candidates(
                 StrategyCandidate(
                     strategy_id=sid,
                     long_conditions=tuple(combo),
-                    short_conditions=tuple(),
+                    short_conditions=(),
                     horizon_bars=horizon_bars,
                     stop_atr=1.0,
                     target_atr=2.0,
@@ -142,7 +142,7 @@ def evaluate_candidate(df: pd.DataFrame, candidate: StrategyCandidate) -> dict[s
     gross_loss = float(-r.where(r < 0, 0).sum())
     return {
         "strategy_id": candidate.strategy_id,
-        "trades": int(len(r)),
+        "trades": len(r),
         "win_rate": float(wins.loc[r.index].mean()),
         "expectancy_r": float(r.mean()),
         "profit_factor": gross_profit / gross_loss if gross_loss > 0 else float("inf"),
