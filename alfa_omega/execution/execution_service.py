@@ -1,9 +1,6 @@
-"""ALFA OMEGA execution orchestration.
+"""ALFA OMEGA execution authorization orchestration.
 
-This service coordinates Risk Engine and Safety Gate. It does not expose
-credentials to signals/models and only calls an adapter after both gates pass.
-The current Alpaca adapter remains read-only, so real Paper submission is
-still blocked by the adapter.
+No broker call occurs unless Risk Engine and Safety Gate both approve.
 """
 from __future__ import annotations
 
@@ -20,7 +17,7 @@ class ExecutionRequest:
     side: str
     entry_price: float
     stop_loss: float
-    quantity: float
+    quantity: float | None
     equity: float
     open_positions: int = 0
     daily_pnl: float = 0.0
@@ -37,6 +34,7 @@ class ExecutionService:
         self.safety = safety_gate or SafetyGate()
 
     def authorize(self, request: ExecutionRequest) -> dict[str, Any]:
+        side = request.side.upper()
         risk = self.risk.evaluate(
             equity=request.equity,
             entry_price=request.entry_price,
@@ -46,6 +44,10 @@ class ExecutionService:
             daily_pnl=request.daily_pnl,
         )
 
+        stop_direction_valid = (
+            (side == "LONG" and request.stop_loss < request.entry_price)
+            or (side == "SHORT" and request.stop_loss > request.entry_price)
+        )
         safety = self.safety.evaluate(
             SafetyContext(
                 mode=request.mode,
@@ -56,8 +58,10 @@ class ExecutionService:
                 kill_switch=True,
                 risk_approved=risk.approved,
                 stop_loss_valid=(
-                    request.stop_loss > 0
+                    side in {"LONG", "SHORT"}
+                    and stop_direction_valid
                     and request.entry_price > 0
+                    and request.stop_loss > 0
                     and request.stop_loss != request.entry_price
                 ),
             )
@@ -70,6 +74,7 @@ class ExecutionService:
                 "reasons": risk.reasons,
                 "quantity": risk.quantity,
                 "risk_amount": risk.risk_amount,
+                "notional": risk.notional,
             },
             "safety": {
                 "approved": safety.approved,
