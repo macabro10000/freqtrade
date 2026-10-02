@@ -6,6 +6,8 @@ same OHLCV input produces the same feature frame.
 """
 from __future__ import annotations
 
+import math
+
 import pandas as pd
 
 
@@ -15,8 +17,10 @@ def _rsi(close: pd.Series, period: int = 14) -> pd.Series:
     loss = -delta.clip(upper=0.0)
     avg_gain = gain.ewm(alpha=1 / period, adjust=False, min_periods=period).mean()
     avg_loss = loss.ewm(alpha=1 / period, adjust=False, min_periods=period).mean()
-    rs = avg_gain / avg_loss.replace(0.0, pd.NA)
-    return 100.0 - (100.0 / (1.0 + rs))
+    rs = avg_gain / avg_loss.where(avg_loss > 0.0)
+    rsi = 100.0 - (100.0 / (1.0 + rs))
+    # If losses are zero, RSI is conventionally 100 rather than missing.
+    return rsi.mask((avg_loss == 0.0) & (avg_gain > 0.0), 100.0)
 
 
 def build_features(df: pd.DataFrame) -> pd.DataFrame:
@@ -35,7 +39,8 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
     body = out["close"] - out["open"]
 
     out["return_1"] = out["close"].pct_change()
-    out["log_return_1"] = (out["close"] / prev_close).apply(lambda x: pd.NA if x <= 0 else __import__("math").log(x))
+    ratio = out["close"] / prev_close
+    out["log_return_1"] = ratio.where(ratio > 0.0).map(lambda x: math.log(x) if pd.notna(x) else pd.NA)
     out["range_pct"] = candle_range / out["close"].replace(0, pd.NA)
     out["body_pct"] = body / out["close"].replace(0, pd.NA)
     out["body_ratio"] = body.abs() / candle_range
