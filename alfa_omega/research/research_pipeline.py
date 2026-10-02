@@ -112,6 +112,7 @@ def _regime_mask(
 def _oos_outcomes(
     frame: pd.DataFrame,
     strategy: StrategyCandidate,
+    event_labels,
     candidate: ResearchCandidate,
     regimes: pd.Series | None,
     test_fraction: float,
@@ -119,13 +120,7 @@ def _oos_outcomes(
     test_start_pos = max(1, int(len(frame) * (1.0 - test_fraction)))
     test_start = frame.index[test_start_pos]
 
-    # Labels are computed on the full timeline BEFORE session/regime filtering.
-    artifact = build_event_label_artifact(
-        frame,
-        horizon_bars=strategy.horizon_bars,
-        stop_atr=strategy.stop_atr,
-        target_atr=strategy.target_atr,
-    )
+    # Labels were computed once on the full timeline before context filtering.
     test = frame.loc[frame.index >= test_start]
     context_mask = (
         _condition_mask(test, strategy)
@@ -133,7 +128,7 @@ def _oos_outcomes(
         & _regime_mask(test, candidate.regime, regimes)
     )
     selected = test.loc[context_mask.fillna(False)]
-    labels = artifact.labels.reindex(selected.index)
+    labels = event_labels.labels.reindex(selected.index)
     valid = labels["label_long_r"].notna()
     selected = selected.loc[valid]
     labels = labels.loc[valid]
@@ -162,18 +157,36 @@ def run_research_pipeline(
         raise ValueError("research frame is empty")
 
     strategy = _strategy_candidate(candidate, spec)
+    event_labels = build_event_label_artifact(
+        frame,
+        horizon_bars=spec.horizon_bars,
+        stop_atr=spec.stop_atr,
+        target_atr=spec.target_atr,
+    )
     validation = validate_experiment(
         spec,
         frame,
         strategy,
         test_fraction=test_fraction,
+        event_labels=event_labels,
     )
-    walk_forward = walk_forward_validate(frame, strategy)
-    snapshot = evaluate_experiment(spec, frame, strategy)
+    walk_forward = walk_forward_validate(
+        spec,
+        frame,
+        strategy,
+        event_labels=event_labels,
+    )
+    snapshot = evaluate_experiment(
+        spec,
+        frame,
+        strategy,
+        event_labels=event_labels,
+    )
 
     r_values, inferred_regimes = _oos_outcomes(
         frame,
         strategy,
+        event_labels,
         candidate,
         regimes,
         test_fraction,
