@@ -1,0 +1,51 @@
+{
+  "knowledge_policy": {
+    "status": "PRESERVE_AND_REUSE",
+    "rule": "No prior validated research, model result, experiment, error, or recovered artifact is discarded merely because the architecture changes.",
+    "promotion_rule": "Historical knowledge is retained with provenance and may be reused only after compatibility and validation checks.",
+    "failure_rule": "Known failure modes become regression tests or explicit research constraints whenever technically applicable.",
+    "model_rule": "A new model does not overwrite an older model; versions remain recoverable and comparable.",
+    "data_rule": "Dataset and feature lineage must identify source, period, market, timeframe, preprocessing and feature version.",
+    "execution_rule": "Paper/live execution results are recorded as observations and never silently become training data."
+  },
+  "knowledge_layers": [
+    "legacy_research",
+    "historical_data",
+    "feature_definitions",
+    "smc_liquidity_rules",
+    "proprietary_indicators",
+    "strategy_candidates",
+    "model_versions",
+    "validation_results",
+    "backtest_results",
+    "walk_forward_results",
+    "paper_execution_results",
+    "failure_registry"
+  ],
+  "failure_categories": [
+    "lookahead_bias",
+    "label_leakage",
+    "data_quality",
+    "timestamp_alignment",
+    "overfitting",
+    "regime_failure",
+    "execution_cost",
+    "slippage",
+    "latency",
+    "risk_limit",
+    "model_drift",
+    "distribution_shift",
+    "implementation_bug"
+  ],
+  "promotion_gates": [
+    "causal_features",
+    "strict_temporal_split",
+    "purged_embargo_validation",
+    "out_of_sample",
+    "walk_forward",
+    "cost_aware_backtest",
+    "regime_stress",
+    "execution_safety"
+  ],
+  "source_of_truth": "ALFA_OMEGA"
+}
