@@ -1,5 +1,3 @@
-import pandas as pd
-
 from alfa_omega.research.hypothesis_factory import (
     generate_hypotheses,
     hypothesis_to_dict,
