@@ -8,6 +8,8 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 import pandas as pd
 
+from alfa_omega.research.event_labels import EventLabelArtifact, build_event_label_artifact
+
 from alfa_omega.research.experiment_evaluator import evaluate_experiment
 from alfa_omega.research.experiment_runner import ExperimentResult, ExperimentSpec
 from alfa_omega.research.strategy_discovery import StrategyCandidate
@@ -48,6 +50,7 @@ def validate_experiment(
     *,
     test_fraction: float = 0.20,
     embargo_bars: int | None = None,
+    event_labels: EventLabelArtifact | None = None,
 ) -> ValidationResult:
     if not 0.05 <= test_fraction < 0.50:
         raise ValueError("test_fraction must be in [0.05, 0.50)")
@@ -64,6 +67,14 @@ def validate_experiment(
     delta = _timeframe_delta(df.index)
     horizon = max(1, int(candidate.horizon_bars))
     embargo = max(0, embargo_bars if embargo_bars is not None else horizon)
+
+    if event_labels is None:
+        event_labels = build_event_label_artifact(
+            df,
+            horizon_bars=candidate.horizon_bars,
+            stop_atr=candidate.stop_atr,
+            target_atr=candidate.target_atr,
+        )
 
     test_start_pos = max(1, int(len(df) * (1.0 - test_fraction)))
     test_start = df.index[test_start_pos]
@@ -83,8 +94,12 @@ def validate_experiment(
     train_df = df.loc[train_mask]
     test_df = df.loc[(df.index >= test_start) & (df.index <= test_end)]
 
-    train_snapshot = evaluate_experiment(spec, train_df, candidate)
-    test_snapshot = evaluate_experiment(spec, test_df, candidate)
+    train_snapshot = evaluate_experiment(
+        spec, train_df, candidate, event_labels=event_labels
+    )
+    test_snapshot = evaluate_experiment(
+        spec, test_df, candidate, event_labels=event_labels
+    )
 
     notes = [
         "STRICT_TEMPORAL_SPLIT applied",
