@@ -8,8 +8,7 @@ A generated indicator must be evaluated OOS and walk-forward before use.
 from __future__ import annotations
 
 from dataclasses import dataclass
-import math
-from typing import Sequence
+from collections.abc import Sequence
 
 import pandas as pd
 
