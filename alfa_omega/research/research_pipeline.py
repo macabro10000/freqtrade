@@ -137,11 +137,9 @@ def _oos_outcomes(
     labels = labels.loc[valid]
 
     return labels["label_long_r"], (
-        (
-            regimes.reindex(selected.index)
-            if regimes is not None
-            else selected["mi_regime"]
-        )
+        regimes.reindex(selected.index)
+        if regimes is not None
+        else selected["mi_regime"]
     )
 
 
