@@ -36,7 +36,9 @@ def purged_train_mask(
     test_end: pd.Timestamp,
     embargo: pd.Timedelta | None = None,
 ) -> pd.Series:
-    """Keep training labels whose information interval does not touch test."""\n    if embargo is None:\n        embargo = pd.Timedelta(0)
+    """Keep training labels whose information interval does not touch test."""
+    if embargo is None:
+        embargo = pd.Timedelta(0)
     if not {"prediction_time", "label_end"}.issubset(samples.columns):
         raise ValueError("samples requires prediction_time and label_end")
 
@@ -55,7 +57,9 @@ def temporal_train_test_split(
     test_end: pd.Timestamp,
     embargo: pd.Timedelta = pd.Timedelta(0),
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Return train/test with overlapping training labels purged."""\n    if embargo is None:\n        embargo = pd.Timedelta(0)
+    """Return train/test with overlapping training labels purged."""
+    if embargo is None:
+        embargo = pd.Timedelta(0)
     mask = purged_train_mask(samples, test_start, test_end, embargo)
     prediction = pd.to_datetime(samples["prediction_time"], utc=True)
     ts = pd.Timestamp(test_start)
