@@ -55,9 +55,11 @@ def temporal_train_test_split(
     samples: pd.DataFrame,
     test_start: pd.Timestamp,
     test_end: pd.Timestamp,
-    embargo: pd.Timedelta = pd.Timedelta(0),
+    embargo: pd.Timedelta | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Return train/test with overlapping training labels purged."""
+    if embargo is None:
+        embargo = pd.Timedelta(0)
     if embargo is None:
         embargo = pd.Timedelta(0)
     mask = purged_train_mask(samples, test_start, test_end, embargo)
