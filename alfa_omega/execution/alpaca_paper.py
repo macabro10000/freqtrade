@@ -208,11 +208,17 @@ class AlpacaPaperAdapter:
         max_notional_usd: float = 25.0,
         client_prefix: str = "AO-SMOKE",
     ) -> dict[str, Any]:
-        """Submit a tiny Paper BUY and close it with a SELL.
+        """Submit a marketable Paper BUY and close it with a SELL.
 
         This is a connectivity smoke test, not a trading strategy. It is
         separately gated and capped so it cannot become a normal execution
         path accidentally.
+
+        The BUY deliberately uses an explicit BTC quantity and a marketable
+        limit price instead of a notional market order. Alpaca documents that
+        crypto supports fractional qty/limit orders and that Paper fills only
+        marketable orders. This makes the test deterministic enough to
+        validate the broker path while remaining strictly Paper-only.
         """
         self._require_execution_enabled()
         smoke_raw = os.getenv("ALFA_OMEGA_PAPER_SMOKE_TEST_ENABLE", "false").strip().lower()
@@ -224,13 +230,42 @@ class AlpacaPaperAdapter:
         if notional_usd <= 0 or notional_usd > max_notional_usd:
             raise ValueError(f"notional_usd must be between 0 and {max_notional_usd}")
 
+        import math
         import time
+        from decimal import Decimal, ROUND_DOWN
         from uuid import uuid4
 
+        symbol = "BTC/USD"
+        latest = self.get_latest_crypto_trade(symbol)
+        reference_price = float(latest["price"])
+        if reference_price <= 0:
+            raise RuntimeError("Invalid BTC/USD latest trade price.")
+
+        # Alpaca documents BTC/USD min_order_size/min_trade_increment as 0.0001.
+        # Use the largest quantity that stays below the $20/$25 smoke cap while
+        # never dropping below the broker minimum.
+        increment = Decimal("0.0001")
+        raw_qty = Decimal(str(notional_usd)) / Decimal(str(reference_price))
+        qty = raw_qty.quantize(increment, rounding=ROUND_DOWN)
+        if qty < increment:
+            qty = increment
+        effective_notional = float(qty) * reference_price
+        if effective_notional > max_notional_usd:
+            qty = (
+                Decimal(str(max_notional_usd))
+                / Decimal(str(reference_price))
+            ).quantize(increment, rounding=ROUND_DOWN)
+        if qty < increment:
+            raise RuntimeError("Smoke notional is below the minimum BTC/USD order size.")
+
+        # A buy limit above the latest trade is immediately marketable in Paper.
+        # Price increment for BTC/USD is $1 according to the asset metadata.
+        buy_limit_price = float(math.ceil(reference_price * 1.01))
         client_id = f"{client_prefix}-{uuid4().hex[:12]}"
-        buy_request = MarketOrderRequest(
-            symbol="BTC/USD",
-            notional=notional_usd,
+        buy_request = LimitOrderRequest(
+            symbol=symbol,
+            qty=float(qty),
+            limit_price=buy_limit_price,
             side=OrderSide.BUY,
             time_in_force=TimeInForce.GTC,
             client_order_id=client_id,
@@ -239,29 +274,31 @@ class AlpacaPaperAdapter:
         buy_id = str(buy.id)
 
         deadline = time.monotonic() + 30.0
-        filled = None
+        filled = 0.0
+        current_buy = buy
         while time.monotonic() < deadline:
-            current = self._trading.get_order_by_id(buy.id)
-            status = str(current.status).lower()
-            if status in {"filled", "partially_filled"}:
-                filled = float(current.filled_qty or 0.0)
-                if filled > 0:
-                    break
+            current_buy = self._trading.get_order_by_id(buy.id)
+            status = str(current_buy.status).lower()
+            filled = float(current_buy.filled_qty or 0.0)
+            if filled > 0 and status in {"filled", "partially_filled"}:
+                break
             if status in {"canceled", "cancelled", "rejected", "expired"}:
                 break
             time.sleep(1.0)
 
-        if not filled:
+        if filled <= 0:
             try:
                 self._trading.cancel_order_by_id(buy.id)
             except Exception:
                 pass
             raise RuntimeError(
-                f"Paper smoke BUY did not fill. order_id={buy_id}"
+                f"Paper smoke BUY did not fill. order_id={buy_id}; "
+                f"reference_price={reference_price}; "
+                f"limit_price={buy_limit_price}; requested_qty={float(qty)}"
             )
 
         # If the BUY only partially filled, cancel the remaining BUY quantity
-        # before submitting the exit. The final position check below is the
+        # before submitting the exit. The final position check remains the
         # source of truth if a residual race occurs.
         latest_buy = self._trading.get_order_by_id(buy.id)
         latest_buy_status = str(latest_buy.status).lower()
@@ -271,12 +308,11 @@ class AlpacaPaperAdapter:
                 self._trading.cancel_order_by_id(buy.id)
                 buy_cancel_requested = True
             except Exception:
-                # A cancel race is reconciled by the position check.
                 pass
 
         sell_id = f"{client_prefix}-EXIT-{uuid4().hex[:12]}"
         sell_request = MarketOrderRequest(
-            symbol="BTC/USD",
+            symbol=symbol,
             qty=filled,
             side=OrderSide.SELL,
             time_in_force=TimeInForce.GTC,
@@ -299,7 +335,7 @@ class AlpacaPaperAdapter:
         if not sell_filled:
             return {
                 "status": "EXIT_NOT_CONFIRMED",
-                "symbol": "BTC/USD",
+                "symbol": symbol,
                 "notional_usd": notional_usd,
                 "buy_order": self._order_to_dict(latest_buy),
                 "sell_order": self._order_to_dict(final_sell),
@@ -309,15 +345,13 @@ class AlpacaPaperAdapter:
                 "requires_manual_reconciliation": True,
             }
 
-        # A filled SELL is not sufficient evidence by itself: verify the
-        # broker reports no residual BTC/USD position.
         remaining_qty = None
         position_deadline = time.monotonic() + 15.0
         while time.monotonic() < position_deadline:
             positions = self._trading.get_all_positions()
             remaining_qty = 0.0
             for position in positions:
-                if position.symbol == "BTC/USD":
+                if position.symbol == symbol:
                     remaining_qty = float(position.qty)
                     break
             if abs(remaining_qty) < 1e-12:
@@ -327,7 +361,7 @@ class AlpacaPaperAdapter:
         if remaining_qty is None or abs(remaining_qty) >= 1e-12:
             return {
                 "status": "EXIT_FILLED_POSITION_REMAINS",
-                "symbol": "BTC/USD",
+                "symbol": symbol,
                 "notional_usd": notional_usd,
                 "buy_order": self._order_to_dict(latest_buy),
                 "sell_order": self._order_to_dict(final_sell),
@@ -341,8 +375,12 @@ class AlpacaPaperAdapter:
 
         return {
             "status": "CYCLE_FILLED_AND_EXITED",
-            "symbol": "BTC/USD",
+            "symbol": symbol,
             "notional_usd": notional_usd,
+            "effective_buy_notional": effective_notional,
+            "reference_price": reference_price,
+            "buy_limit_price": buy_limit_price,
+            "requested_qty": float(qty),
             "buy_order": self._order_to_dict(latest_buy),
             "filled_buy_qty": filled,
             "sell_order": self._order_to_dict(final_sell),
