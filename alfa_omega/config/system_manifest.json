@@ -1,19 +1,46 @@
 {
   "project": "ALFA OMEGA TRADING",
   "phase": "REBUILD_FOUNDATION_EXECUTION_READY",
-  "markets": ["BTC/USD", "XAU/USD"],
-  "decision_timeframes": ["5m", "15m", "1h", "4h", "1d"],
-  "data_timeframes": ["1m", "5m", "15m", "1h", "4h", "1d", "1w"],
+  "markets": [
+    "BTC/USD",
+    "XAU/USD"
+  ],
+  "decision_timeframes": [
+    "5m",
+    "15m",
+    "1h",
+    "4h",
+    "1d"
+  ],
+  "data_timeframes": [
+    "1m",
+    "5m",
+    "15m",
+    "1h",
+    "4h",
+    "1d",
+    "1w"
+  ],
   "execution": {
     "architecture_enabled": true,
     "live_execution_enabled": false,
     "paper_execution_enabled": false,
     "research_execution_enabled": true,
     "default_mode": "RESEARCH",
-    "allowed_modes": ["RESEARCH", "PAPER", "LIVE"],
+    "allowed_modes": [
+      "RESEARCH",
+      "PAPER",
+      "LIVE"
+    ],
     "live_requires_explicit_enable": true,
     "live_requires_safety_gate": true,
-    "live_requires_risk_limits": true
+    "live_requires_risk_limits": true,
+    "paper_provider": "alpaca",
+    "paper_markets": [
+      "BTC/USD"
+    ],
+    "paper_adapter": "alfa_omega.execution.alpaca_paper.AlpacaPaperAdapter",
+    "paper_validation_status": "READ_ONLY_VALIDATED"
   },
   "learning": {
     "enabled": false,
@@ -43,5 +70,10 @@
     "credential_separation_required": true,
     "paper_live_credential_separation_required": true
   },
-  "source_of_truth": "alfa_omega"
+  "source_of_truth": "alfa_omega",
+  "credentials": {
+    "ALPACA_API_KEY": "environment_only",
+    "ALPACA_SECRET_KEY": "environment_only",
+    "ALPACA_PAPER": "true"
+  }
 }
