@@ -21,9 +21,9 @@ def test_risk_engine_sizes_from_risk_budget():
         open_positions=0,
     )
     assert decision.approved is True
-    assert decision.quantity == pytest.approx(0.5)
-    assert decision.risk_amount == pytest.approx(500.0)
-    assert decision.notional == pytest.approx(50_000.0)
+    assert decision.quantity == pytest.approx(0.1)
+    assert decision.risk_amount == pytest.approx(100.0)
+    assert decision.notional == pytest.approx(10_000.0)
 
 
 def test_safe_paper_request_is_authorized_without_broker_call():
@@ -33,6 +33,7 @@ def test_safe_paper_request_is_authorized_without_broker_call():
             side="LONG",
             entry_price=100_000.0,
             stop_loss=99_000.0,
+            take_profit=101_000.0,
             quantity=0.1,
             equity=100_000.0,
             mode="PAPER",
@@ -64,6 +65,10 @@ def test_risk_budget_rejects_oversized_requested_quantity():
         ({"market": "XAU/USD"}, "MARKET_NOT_ALLOWED"),
         ({"mode": "LIVE"}, "LIVE_EXECUTION_BLOCKED"),
         ({"side": "LONG", "stop_loss": 101_000.0}, "INVALID_STOP_LOSS"),
+        ({"take_profit": 99_000.0}, "INVALID_TAKE_PROFIT"),
+        ({"broker_healthy": False}, "BROKER_UNHEALTHY"),
+        ({"data_fresh": False}, "STALE_DATA"),
+        ({"kill_switch": False}, "KILL_SWITCH_ACTIVE"),
     ],
 )
 def test_safety_rejects_unsafe_requests(kwargs, reason):
@@ -94,4 +99,4 @@ def test_no_quantity_uses_risk_derived_size():
         )
     )
     assert result["authorized"] is True
-    assert result["risk"]["quantity"] == pytest.approx(0.5)
+    assert result["risk"]["quantity"] == pytest.approx(0.1)
