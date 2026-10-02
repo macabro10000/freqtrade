@@ -1,0 +1,17 @@
+{
+  "provider": "alpaca",
+  "mode": "PAPER",
+  "paper": true,
+  "live_enabled": false,
+  "order_execution_enabled": false,
+  "credentials": {
+    "api_key_env": "ALPACA_API_KEY",
+    "secret_key_env": "ALPACA_SECRET_KEY"
+  },
+  "trading_endpoint": "https://paper-api.alpaca.markets",
+  "markets": [
+    "BTC/USD"
+  ],
+  "read_only_phase": true,
+  "source_of_truth": "ALFA_OMEGA"
+}
