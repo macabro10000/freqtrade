@@ -6,10 +6,13 @@ candidate. It never trains models or executes orders.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+
 import pandas as pd
 
-from alfa_omega.research.event_labels import EventLabelArtifact, build_event_label_artifact
-
+from alfa_omega.research.event_labels import (
+    EventLabelArtifact,
+    build_event_label_artifact,
+)
 from alfa_omega.research.experiment_evaluator import evaluate_experiment
 from alfa_omega.research.experiment_runner import ExperimentResult, ExperimentSpec
 from alfa_omega.research.strategy_discovery import StrategyCandidate
