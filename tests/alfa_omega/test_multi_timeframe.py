@@ -1,4 +1,5 @@
 import pandas as pd
+
 from alfa_omega.features.multi_timeframe import (
     build_market_map,
     child_count,
@@ -40,7 +41,7 @@ def test_higher_timeframe_is_not_visible_before_close():
 
     # The weekly candle opened Monday and closes the following Monday.
     assert pd.isna(mapped.loc[pd.Timestamp("2026-01-05", tz="UTC"), "htf_1w_close"])
-    assert mapped.loc[pd.Timestamp("2026-01-12", tz="UTC"), "htf_1w_close"] == weekly.iloc[0]["close"]
+    assert mapped.loc[\n        pd.Timestamp("2026-01-12", tz="UTC"), "htf_1w_close"\n    ] == weekly.iloc[0]["close"]
 
 
 def test_higher_timeframe_context_is_causal():
