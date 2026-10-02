@@ -15,7 +15,7 @@ import json
 import os
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 # ------------------------------------------------------------
 # CONFIGURACIÓN
@@ -59,7 +59,7 @@ TIMEFRAMES = [
 # ------------------------------------------------------------
 
 def utc_now():
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 # ------------------------------------------------------------
 # DIRECTORIOS LOCALES
@@ -284,7 +284,7 @@ def scan_local_data():
     if not os.path.exists(LOCAL_ROOT):
         return result
 
-    for root, dirs, files in os.walk(LOCAL_ROOT):
+    for root, _dirs, files in os.walk(LOCAL_ROOT):
 
         for filename in files:
 
