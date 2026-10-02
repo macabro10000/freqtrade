@@ -125,7 +125,13 @@ def evaluate_candidate(
         mask &= _condition_mask(df, condition)
     sample = df.loc[mask]
     if sample.empty:
-        return {"strategy_id": candidate.strategy_id, "trades": 0, "win_rate": 0.0, "expectancy_r": 0.0, "profit_factor": 0.0}
+        return {
+            "strategy_id": candidate.strategy_id,
+            "trades": 0,
+            "win_rate": 0.0,
+            "expectancy_r": 0.0,
+            "profit_factor": 0.0,
+        }
 
     labels = triple_barrier_labels(
         df,
