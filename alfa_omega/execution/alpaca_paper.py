@@ -204,7 +204,7 @@ class AlpacaPaperAdapter:
     def run_smoke_cycle(
         self,
         *,
-        notional_usd: float = 10.0,
+        notional_usd: float = 20.0,
         max_notional_usd: float = 25.0,
         client_prefix: str = "AO-SMOKE",
     ) -> dict[str, Any]:
