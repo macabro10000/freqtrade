@@ -16,6 +16,7 @@ from alfa_omega.data.alpaca_crypto import AlpacaCryptoDataClient
 from alfa_omega.execution.alpaca_paper import AlpacaPaperAdapter
 from alfa_omega.features.feature_engine import build_features
 from alfa_omega.features.multi_timeframe import build_market_map, describe_hierarchy
+from alfa_omega.features.proprietary_engine import build_proprietary_features
 from alfa_omega.smc.structure_engine import build_structure_features
 
 app = FastAPI(
@@ -96,6 +97,8 @@ def status() -> dict[str, Any]:
         "smc_engine": True,
         "liquidity_engine": True,
         "multi_timeframe_engine": True,
+        "proprietary_indicator_engine": True,
+        "proprietary_indicator_count": 3,
         "market_hierarchy": describe_hierarchy(),
         "timestamp": datetime.now(UTC).isoformat(),
     }
@@ -139,6 +142,7 @@ def btc_usd_bars(limit: int = 100) -> JSONResponse:
             return JSONResponse(status_code=503, content={"status": "unavailable", "error": "No BTC/USD bars returned"})
         features = build_features(frame)
         features = build_structure_features(features)
+        features = build_proprietary_features(features)
         latest = features.iloc[-1].replace({pd.NA: None}).to_dict()
         return JSONResponse(
             status_code=200,
