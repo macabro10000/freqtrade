@@ -69,7 +69,7 @@ def test_walk_forward_is_expanding_and_chronological():
     assert result.total_test_trades >= 0
     assert result.feature_audit_ok is True
 
-    for previous, current in zip(result.folds, result.folds[1:]):
+    for previous, current in zip(result.folds, result.folds[1:], strict=True):
         assert current.test_start > previous.test_start
         assert current.train_rows >= previous.train_rows
         assert current.train_end < current.test_start
