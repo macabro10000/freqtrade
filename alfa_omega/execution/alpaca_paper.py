@@ -260,6 +260,20 @@ class AlpacaPaperAdapter:
                 f"Paper smoke BUY did not fill. order_id={buy_id}"
             )
 
+        # If the BUY only partially filled, cancel the remaining BUY quantity
+        # before submitting the exit. The final position check below is the
+        # source of truth if a residual race occurs.
+        latest_buy = self._trading.get_order_by_id(buy.id)
+        latest_buy_status = str(latest_buy.status).lower()
+        buy_cancel_requested = False
+        if latest_buy_status == "partially_filled":
+            try:
+                self._trading.cancel_order_by_id(buy.id)
+                buy_cancel_requested = True
+            except Exception:
+                # A cancel race is reconciled by the position check.
+                pass
+
         sell_id = f"{client_prefix}-EXIT-{uuid4().hex[:12]}"
         sell_request = MarketOrderRequest(
             symbol="BTC/USD",
@@ -287,8 +301,40 @@ class AlpacaPaperAdapter:
                 "status": "EXIT_NOT_CONFIRMED",
                 "symbol": "BTC/USD",
                 "notional_usd": notional_usd,
-                "buy_order": self._order_to_dict(buy),
+                "buy_order": self._order_to_dict(latest_buy),
                 "sell_order": self._order_to_dict(final_sell),
+                "filled_buy_qty": filled,
+                "buy_cancel_requested": buy_cancel_requested,
+                "purpose": "paper_connectivity_smoke_test_only",
+                "requires_manual_reconciliation": True,
+            }
+
+        # A filled SELL is not sufficient evidence by itself: verify the
+        # broker reports no residual BTC/USD position.
+        remaining_qty = None
+        position_deadline = time.monotonic() + 15.0
+        while time.monotonic() < position_deadline:
+            positions = self._trading.get_all_positions()
+            remaining_qty = 0.0
+            for position in positions:
+                if position.symbol == "BTC/USD":
+                    remaining_qty = float(position.qty)
+                    break
+            if abs(remaining_qty) < 1e-12:
+                break
+            time.sleep(1.0)
+
+        if remaining_qty is None or abs(remaining_qty) >= 1e-12:
+            return {
+                "status": "EXIT_FILLED_POSITION_REMAINS",
+                "symbol": "BTC/USD",
+                "notional_usd": notional_usd,
+                "buy_order": self._order_to_dict(latest_buy),
+                "sell_order": self._order_to_dict(final_sell),
+                "filled_buy_qty": filled,
+                "filled_sell_qty": float(final_sell.filled_qty or 0.0),
+                "remaining_qty": remaining_qty,
+                "buy_cancel_requested": buy_cancel_requested,
                 "purpose": "paper_connectivity_smoke_test_only",
                 "requires_manual_reconciliation": True,
             }
@@ -297,10 +343,12 @@ class AlpacaPaperAdapter:
             "status": "CYCLE_FILLED_AND_EXITED",
             "symbol": "BTC/USD",
             "notional_usd": notional_usd,
-            "buy_order": self._order_to_dict(buy),
+            "buy_order": self._order_to_dict(latest_buy),
             "filled_buy_qty": filled,
             "sell_order": self._order_to_dict(final_sell),
             "filled_sell_qty": float(final_sell.filled_qty or 0.0),
+            "remaining_qty": 0.0,
+            "buy_cancel_requested": buy_cancel_requested,
             "purpose": "paper_connectivity_smoke_test_only",
         }
 
