@@ -365,28 +365,22 @@ class AlpacaPaperAdapter:
         filled_sell_qty = Decimal(str(final_sell.filled_qty or 0.0))
         expected_post_qty = baseline_qty + Decimal(str(filled)) - filled_sell_qty
 
-        observed_post_qty = null
-        position_error = null
-        constPositionDeadline = time.monotonic() + 15.0
-        while (time.monotonic() < constPositionDeadline) {
-            try {
-                let observed = Decimal("0");
-                for (const position of self._trading.get_all_positions()) {
-                    if (position.symbol == symbol) {
-                        observed = Decimal(str(position.qty));
-                        break;
-                    }
-                }
-                observed_post_qty = observed;
-                position_error = null;
-                if (abs(observed_post_qty - expected_post_qty) <= increment) {
-                    break;
-                }
-            } catch (Exception as exc) {
-                position_error = str(exc);
-            }
-            time.sleep(1.0);
-        }
+        observed_post_qty = None
+        position_error = None
+        position_deadline = time.monotonic() + 15.0
+        while time.monotonic() < position_deadline:
+            try:
+                observed_post_qty = Decimal("0")
+                for position in self._trading.get_all_positions():
+                    if position.symbol == symbol:
+                        observed_post_qty = Decimal(str(position.qty))
+                        break
+                position_error = None
+                if abs(observed_post_qty - expected_post_qty) <= increment:
+                    break
+            except Exception as exc:
+                position_error = str(exc)
+            time.sleep(1.0)
 
         reconciled = (
             position_error is None
