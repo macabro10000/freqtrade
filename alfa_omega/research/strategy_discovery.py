@@ -8,9 +8,9 @@ OOS and walk-forward tests.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, asdict
-from itertools import combinations
 from collections.abc import Iterable
+from dataclasses import asdict, dataclass
+from itertools import combinations
 
 import pandas as pd
 
