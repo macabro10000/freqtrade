@@ -132,6 +132,8 @@ def build_proprietary_features(df: pd.DataFrame) -> pd.DataFrame:
     out["prop_pro_rsi_9"] = rsi9
     out["prop_pro_rsi_sma_18"] = rsi_sma18
     out["prop_pro_rsi_sma_36"] = rsi_sma36
+    # Backward-compatible alias retained for older research artifacts/tests.
+    out["prop_pro_rsi_sma36"] = rsi_sma36
     out["prop_pro_rsi_sma18_distance"] = rsi9 - rsi_sma18
     out["prop_pro_rsi_sma36_distance"] = rsi9 - rsi_sma36
     out["prop_pro_sma18_sma36_distance"] = rsi_sma18 - rsi_sma36
