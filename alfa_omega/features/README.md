@@ -1,16 +1,17 @@
 # FEATURES
 
-Características utilizadas por el sistema.
+Variables causales utilizadas por estrategias y modelos.
 
-Indicadores y variables previstas:
-
-- RSI
-- Vortex
-- Volume
+Familias:
+- precio y retornos
+- volumen
+- volatilidad
 - VWAP
-- Volatility
-- Market structure
-- Liquidity
+- estructura
+- liquidez
 - FVG
 - Order Blocks
-- Order Flow cuando exista información real
+- contexto multi-timeframe
+- 3 indicadores propietarios
+
+Regla: una feature en la vela t solo utiliza información disponible hasta t. No se permiten agregaciones centradas, normalización global ni transformaciones que filtren información futura.
