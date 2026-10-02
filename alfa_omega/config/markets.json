@@ -1,16 +1,7 @@
 {
-  "markets": [
-    "BTC/USD",
-    "XAU/USD",
-    "EUR/USD"
-  ],
-  "timeframes": [
-    "1m",
-    "5m",
-    "15m",
-    "1h",
-    "4h",
-    "1d",
-    "1w"
-  ]
+  "markets": ["BTC/USD", "XAU/USD"],
+  "timeframes": ["1m", "5m", "15m", "1h", "4h", "1d", "1w"],
+  "primary_timeframes": ["5m", "15m", "1h", "4h", "1d"],
+  "excluded_markets": ["EUR/USD"],
+  "source_of_truth": "ALFA_OMEGA"
 }
