@@ -72,18 +72,20 @@ def fetch_research_source(
         raise ValueError("research URLs must use http or https")
     _safe_host(parsed.hostname or "")
 
-    request = Request(
-        url,
+    with httpx.Client(
+        follow_redirects=False,
+        timeout=timeout_seconds,
         headers={
             "User-Agent": "ALFA-OMEGA-Research/1.0",
             "Accept": "text/html,text/plain,application/xhtml+xml",
         },
-    )
-    with urlopen(request, timeout=timeout_seconds) as response:
+    ) as client:
+        response = client.get(url)
+        response.raise_for_status()
         content_type = response.headers.get("Content-Type", "").lower()
         if not any(token in content_type for token in ("text/", "html", "json", "xml")):
             raise ValueError("research source is not a text-compatible document")
-        body = response.read(max_bytes + 1)
+        body = response.content[: max_bytes + 1]
         if len(body) > max_bytes:
             raise ValueError("research source exceeds max_bytes")
         charset = "utf-8"
