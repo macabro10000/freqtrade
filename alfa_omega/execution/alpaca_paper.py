@@ -73,7 +73,7 @@ class AlpacaPaperAdapter:
             "live_enabled": self.live_enabled,
             "order_execution_enabled": self.order_execution_enabled,
             "account_status": account["status"],
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
     def get_account(self) -> dict[str, Any]:
