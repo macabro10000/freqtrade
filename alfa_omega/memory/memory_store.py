@@ -6,12 +6,13 @@ layer and must retain provenance and versioning.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 import hashlib
 import json
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -82,7 +83,7 @@ class MemoryStore:
             record_id=self._record_id(kind, payload, source),
             kind=kind,
             payload=dict(payload),
-            created_at=datetime.now(timezone.utc).isoformat(),
+            created_at=datetime.now(UTC).isoformat(),
             source=source,
         )
 
