@@ -14,6 +14,8 @@ from typing import Iterable
 
 import pandas as pd
 
+from alfa_omega.research.triple_barrier import triple_barrier_labels
+
 
 @dataclass(frozen=True)
 class StrategyCandidate:
@@ -114,55 +116,40 @@ def discover_candidates(
     return candidates
 
 
-def evaluate_candidate(
-    df: pd.DataFrame,
-    candidate: StrategyCandidate,
-) -> dict[str, float | int | str]:
-    """Evaluate a candidate on causal entry conditions.
-
-    Future outcomes are only used as labels/evaluation targets. No acceptance
-    decision is made here.
-    """
+def evaluate_candidate(df: pd.DataFrame, candidate: StrategyCandidate) -> dict[str, float | int | str]:
+    """Evaluate using chronological first-touch target/stop/time outcomes."""
     mask = pd.Series(True, index=df.index)
     for condition in candidate.long_conditions:
         mask &= _condition_mask(df, condition)
-
     sample = df.loc[mask]
     if sample.empty:
-        return {
-            "strategy_id": candidate.strategy_id,
-            "trades": 0,
-            "win_rate": 0.0,
-            "expectancy_r": 0.0,
-            "profit_factor": 0.0,
-        }
+        return {"strategy_id": candidate.strategy_id, "trades": 0, "win_rate": 0.0, "expectancy_r": 0.0, "profit_factor": 0.0}
 
-    labeled = label_forward_outcomes(
+    labels = triple_barrier_labels(
         df,
         horizon_bars=candidate.horizon_bars,
         stop_atr=candidate.stop_atr,
         target_atr=candidate.target_atr,
-    ).loc[sample.index]
+    ).reindex(sample.index)
+    labels = labels.loc[labels["label_long_outcome"].notna()]
+    if labels.empty:
+        return {"strategy_id": candidate.strategy_id, "trades": 0, "win_rate": 0.0, "expectancy_r": 0.0, "profit_factor": 0.0}
 
-    wins = (labeled["label_long_target"] == 1) & (labeled["label_long_stop"] == 0)
-    losses = (labeled["label_long_stop"] == 1) & (labeled["label_long_target"] == 0)
-    r = labeled["label_long_r"].clip(-candidate.stop_atr, candidate.target_atr)
-
+    wins = labels["label_long_outcome"].eq("TARGET")
+    losses = labels["label_long_outcome"].eq("STOP")
+    r = pd.to_numeric(labels["label_long_r"], errors="coerce").dropna()
     gross_profit = float(r.where(r > 0, 0).sum())
     gross_loss = float(-r.where(r < 0, 0).sum())
-
     return {
         "strategy_id": candidate.strategy_id,
-        "trades": int(len(labeled)),
-        "win_rate": float(wins.mean()),
+        "trades": int(len(r)),
+        "win_rate": float(wins.loc[r.index].mean()),
         "expectancy_r": float(r.mean()),
-        "profit_factor": (
-            gross_profit / gross_loss if gross_loss > 0 else float("inf")
-        ),
-        "wins": int(wins.sum()),
-        "losses": int(losses.sum()),
+        "profit_factor": gross_profit / gross_loss if gross_loss > 0 else float("inf"),
+        "wins": int(wins.loc[r.index].sum()),
+        "losses": int(losses.loc[r.index].sum()),
+        "time_exits": int(labels["label_long_outcome"].eq("TIME").sum()),
     }
-
 
 def candidate_to_dict(candidate: StrategyCandidate) -> dict[str, object]:
     return asdict(candidate)
