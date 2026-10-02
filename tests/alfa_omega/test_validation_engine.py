@@ -1,7 +1,7 @@
 import pandas as pd
 
-from alfa_omega.research.hypothesis_factory import ResearchHypothesis
 from alfa_omega.research.experiment_runner import build_experiment
+from alfa_omega.research.hypothesis_factory import ResearchHypothesis
 from alfa_omega.research.strategy_discovery import StrategyCandidate
 from alfa_omega.research.validation_engine import validate_experiment, validation_to_result
 
