@@ -236,6 +236,19 @@ class AlpacaPaperAdapter:
         from uuid import uuid4
 
         symbol = "BTC/USD"
+        increment = Decimal("0.0001")
+
+        # Reconciliation must preserve pre-existing holdings. The previous
+        # implementation incorrectly required the total BTC position to become
+        # zero, which is invalid when the account already owns BTC.
+        baseline_qty = Decimal("0")
+        baseline_position_found = False
+        for position in self._trading.get_all_positions():
+            if position.symbol == symbol:
+                baseline_qty = Decimal(str(position.qty))
+                baseline_position_found = True
+                break
+
         latest = self.get_latest_crypto_trade(symbol)
         reference_price = float(latest["price"])
         if reference_price <= 0:
@@ -244,7 +257,6 @@ class AlpacaPaperAdapter:
         # Alpaca documents BTC/USD min_order_size/min_trade_increment as 0.0001.
         # Use the largest quantity that stays below the $20/$25 smoke cap while
         # never dropping below the broker minimum.
-        increment = Decimal("0.0001")
         raw_qty = Decimal(str(notional_usd)) / Decimal(str(reference_price))
         qty = raw_qty.quantize(increment, rounding=ROUND_DOWN)
         if qty < increment:
@@ -345,36 +357,70 @@ class AlpacaPaperAdapter:
                 "requires_manual_reconciliation": True,
             }
 
-        remaining_qty = None
-        position_deadline = time.monotonic() + 15.0
-        while time.monotonic() < position_deadline:
-            positions = self._trading.get_all_positions()
-            remaining_qty = 0.0
-            for position in positions:
-                if position.symbol == symbol:
-                    remaining_qty = float(position.qty)
-                    break
-            if abs(remaining_qty) < 1e-12:
-                break
-            time.sleep(1.0)
+        # Reconcile against the position that existed BEFORE this test.
+        # Expected post-test position = baseline + filled BUY - filled SELL.
+        # This preserves unrelated/pre-existing holdings and avoids float
+        # equality problems by comparing Decimal quantities to the broker
+        # increment.
+        filled_sell_qty = Decimal(str(final_sell.filled_qty or 0.0))
+        expected_post_qty = baseline_qty + Decimal(str(filled)) - filled_sell_qty
 
-        if remaining_qty is None or abs(remaining_qty) >= 1e-12:
+        observed_post_qty = null
+        position_error = null
+        constPositionDeadline = time.monotonic() + 15.0
+        while (time.monotonic() < constPositionDeadline) {
+            try {
+                let observed = Decimal("0");
+                for (const position of self._trading.get_all_positions()) {
+                    if (position.symbol == symbol) {
+                        observed = Decimal(str(position.qty));
+                        break;
+                    }
+                }
+                observed_post_qty = observed;
+                position_error = null;
+                if (abs(observed_post_qty - expected_post_qty) <= increment) {
+                    break;
+                }
+            } catch (Exception as exc) {
+                position_error = str(exc);
+            }
+            time.sleep(1.0);
+        }
+
+        reconciled = (
+            position_error is None
+            and observed_post_qty is not None
+            and abs(observed_post_qty - expected_post_qty) <= increment
+        )
+
+        if not reconciled:
             return {
-                "status": "EXIT_FILLED_POSITION_REMAINS",
+                "status": (
+                    "EXIT_RECONCILIATION_FAILED"
+                    if position_error is None
+                    else "EXIT_FILLED_RECONCILIATION_PENDING"
+                ),
                 "symbol": symbol,
                 "notional_usd": notional_usd,
                 "buy_order": self._order_to_dict(latest_buy),
                 "sell_order": self._order_to_dict(final_sell),
                 "filled_buy_qty": filled,
-                "filled_sell_qty": float(final_sell.filled_qty or 0.0),
-                "remaining_qty": remaining_qty,
+                "filled_sell_qty": float(filled_sell_qty),
+                "baseline_position_qty": float(baseline_qty),
+                "baseline_position_found": baseline_position_found,
+                "expected_post_position_qty": float(expected_post_qty),
+                "observed_post_position_qty": (
+                    float(observed_post_qty) if observed_post_qty is not None else None
+                ),
+                "position_error": position_error,
                 "buy_cancel_requested": buy_cancel_requested,
                 "purpose": "paper_connectivity_smoke_test_only",
                 "requires_manual_reconciliation": True,
             }
 
         return {
-            "status": "CYCLE_FILLED_AND_EXITED",
+            "status": "CYCLE_FILLED_AND_RECONCILED",
             "symbol": symbol,
             "notional_usd": notional_usd,
             "effective_buy_notional": effective_notional,
@@ -385,7 +431,10 @@ class AlpacaPaperAdapter:
             "filled_buy_qty": filled,
             "sell_order": self._order_to_dict(final_sell),
             "filled_sell_qty": float(final_sell.filled_qty or 0.0),
-            "remaining_qty": 0.0,
+            "baseline_position_qty": float(baseline_qty),
+            "expected_post_position_qty": float(expected_post_qty),
+            "observed_post_position_qty": float(observed_post_qty),
+            "position_delta": float(observed_post_qty - baseline_qty),
             "buy_cancel_requested": buy_cancel_requested,
             "purpose": "paper_connectivity_smoke_test_only",
         }
