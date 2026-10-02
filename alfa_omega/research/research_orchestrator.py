@@ -6,7 +6,7 @@ modify live policy, or bypass validation gates.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 import hashlib
 from itertools import product
 
@@ -84,7 +84,7 @@ def plan_research_tasks(
 
 def create_run(tasks: list[ResearchTask]) -> ResearchRun:
     task_ids = tuple(task.task_id for task in tasks)
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     raw = "|".join(task_ids) + now
     run_id = "RUN-" + hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
     return ResearchRun(
