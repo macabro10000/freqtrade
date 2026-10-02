@@ -1,17 +1,16 @@
-# SMART MONEY CONCEPTS
+# SMC
 
-Módulo de estructura de mercado.
+Módulo causal de estructura y liquidez.
 
-Elementos previstos:
-
+Produce features:
 - HH
 - HL
 - LH
 - LL
 - BOS
 - CHOCH
-- Liquidity sweep
-- Fair Value Gap
-- Order Blocks
+- liquidity sweep
+- FVG
+- Order Block
 
-Todas las detecciones deberán ser causales y evitar lookahead.
+Cada detección debe conservar su momento de confirmación. Una estructura confirmada después no puede generar una señal antes de esa confirmación.
