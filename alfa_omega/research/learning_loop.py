@@ -196,5 +196,11 @@ def summarize_failures(errors: Iterable[ResearchError]) -> dict[str, int]:
     return counts
 
 
-def to_dict(value: ResearchError | LearningObservation | ResearchDecision | ExperienceRecord | PatternLesson) -> dict[str, object]:
+def to_dict(
+    value: ResearchError
+    | LearningObservation
+    | ResearchDecision
+    | ExperienceRecord
+    | PatternLesson,
+) -> dict[str, object]:
     return asdict(value)
