@@ -6,7 +6,7 @@ variables and are never persisted by this module.
 from __future__ import annotations
 
 import os
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any
 
 import httpx
