@@ -8,8 +8,6 @@ boundary are purged, followed by an explicit embargo. No shuffling occurs.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from typing import Sequence
-
 import pandas as pd
 
 from alfa_omega.research.experiment_evaluator import evaluate_experiment
