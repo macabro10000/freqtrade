@@ -15,7 +15,7 @@ import os
 import time
 from datetime import UTC, datetime
 from decimal import Decimal, ROUND_DOWN
-from uuid import uuid4, timezone
+from uuid import uuid4
 from typing import Any
 
 LOGGER = logging.getLogger(__name__)
