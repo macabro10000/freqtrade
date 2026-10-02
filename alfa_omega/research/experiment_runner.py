@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 from hashlib import sha256
-from typing import Mapping, Sequence
+from collections.abc import Mapping, Sequence
 
 from alfa_omega.research.hypothesis_factory import ResearchHypothesis
 
