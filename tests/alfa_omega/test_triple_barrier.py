@@ -19,9 +19,12 @@ def _frame():
 
 
 def test_first_touch_target():
-    labels = triple_barrier_labels(_frame(), horizon_bars=3, stop_atr=1, target_atr=2)
-    assert labels.loc[_frame().index[0], "label_long_outcome"] == "TARGET"
-    assert labels.loc[_frame().index[0], "label_long_r"] == 2.0
+    frame = _frame()
+    labels = triple_barrier_labels(
+        frame, horizon_bars=3, stop_atr=1, target_atr=2
+    )
+    assert labels.loc[frame.index[0], "label_long_outcome"] == "TARGET"
+    assert labels.loc[frame.index[0], "label_long_r"] == 2.0
 
 
 def test_same_candle_ambiguity_is_conservative_stop():
@@ -38,3 +41,23 @@ def test_time_barrier():
     frame["low"] = 99.5
     labels = triple_barrier_labels(frame, horizon_bars=2)
     assert labels.loc[frame.index[0], "label_long_outcome"] == "TIME"
+
+
+def test_incomplete_horizon_is_excluded_by_default():
+    frame = _frame()
+    labels = triple_barrier_labels(frame, horizon_bars=3)
+    assert frame.index[-1] not in labels.index
+    assert frame.index[-2] not in labels.index
+    assert len(labels) == 2
+
+
+def test_incomplete_horizon_can_be_explicitly_unresolved():
+    frame = _frame()
+    labels = triple_barrier_labels(
+        frame,
+        horizon_bars=3,
+        include_unresolved=True,
+    )
+    assert labels.loc[frame.index[-1], "label_long_outcome"] == "UNRESOLVED"
+    assert pd.isna(labels.loc[frame.index[-1], "label_long_r"])
+    assert labels.loc[frame.index[-1], "label_horizon_bars"] == 3
