@@ -7,14 +7,15 @@ not execute code found on the web.
 """
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
 import hashlib
 import ipaddress
 import re
 import socket
+from dataclasses import asdict, dataclass
+from datetime import UTC, datetime
 from urllib.parse import urlparse
-from urllib.request import Request, urlopen
+
+import httpx
 
 
 @dataclass(frozen=True)
@@ -54,7 +55,7 @@ def _safe_host(host: str) -> None:
 
 
 def _source_id(url: str) -> str:
-    return "SRC-" + hashlib.sha256(url.encode("utf-8")).hexdigest()[:16]
+    return "SRC-" + hashlib.sha256(url.encode()).hexdigest()[:16]
 
 
 def fetch_research_source(
@@ -96,7 +97,7 @@ def fetch_research_source(
         source_id=_source_id(url),
         url=url,
         title=parsed.netloc,
-        fetched_at=datetime.now(timezone.utc).isoformat(),
+        fetched_at=datetime.now(UTC).isoformat(),
         content_sha256=digest,
         content_length=len(body),
         status="FETCHED",
