@@ -5,9 +5,9 @@ modify live policy, or bypass validation gates.
 """
 from __future__ import annotations
 
+import hashlib
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
-import hashlib
 from itertools import product
 
 from alfa_omega.memory.memory_store import MemoryStore
