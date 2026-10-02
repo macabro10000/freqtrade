@@ -64,7 +64,21 @@ class PatternLesson:
     failure_categories: tuple[str, ...] = ()
 
 
-def build_experience_record(*, experience_id: str, market: str, timeframe: str, regime: str, decision: str, pattern_ids: Sequence[str], feature_snapshot: dict[str, float], expected_r: float | None, realized_r: float | None, outcome: str, error_categories: Sequence[str] = (), timestamp: str | None = None) -> ExperienceRecord:
+def build_experience_record(
+    *,
+    experience_id: str,
+    market: str,
+    timeframe: str,
+    regime: str,
+    decision: str,
+    pattern_ids: Sequence[str],
+    feature_snapshot: dict[str, float],
+    expected_r: float | None,
+    realized_r: float | None,
+    outcome: str,
+    error_categories: Sequence[str] = (),
+    timestamp: str | None = None,
+) -> ExperienceRecord:
     """Create normalized immutable experience; it never changes execution policy."""
     return ExperienceRecord(
         experience_id=experience_id,
@@ -74,7 +88,13 @@ def build_experience_record(*, experience_id: str, market: str, timeframe: str, 
         regime=regime,
         decision=decision,
         pattern_ids=tuple(pattern_ids),
-        feature_snapshot=tuple(sorted((str(k), float(v)) for k, v in feature_snapshot.items() if v is not None)),
+        feature_snapshot=tuple(
+            sorted(
+                (str(k), float(v))
+                for k, v in feature_snapshot.items()
+                if v is not None
+            )
+        ),
         expected_r=expected_r,
         realized_r=realized_r,
         outcome=outcome,
