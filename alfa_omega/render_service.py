@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse
 from alfa_omega.data.alpaca_crypto import AlpacaCryptoDataClient
 from alfa_omega.execution.alpaca_paper import AlpacaPaperAdapter
 from alfa_omega.features.feature_engine import build_features
+from alfa_omega.features.multi_timeframe import build_market_map, describe_hierarchy
 from alfa_omega.smc.structure_engine import build_structure_features
 
 app = FastAPI(
@@ -94,6 +95,8 @@ def status() -> dict[str, Any]:
         "feature_engine": True,
         "smc_engine": True,
         "liquidity_engine": True,
+        "multi_timeframe_engine": True,
+        "market_hierarchy": describe_hierarchy(),
         "timestamp": datetime.now(UTC).isoformat(),
     }
 
@@ -150,6 +153,74 @@ def btc_usd_bars(limit: int = 100) -> JSONResponse:
         )
     except Exception as exc:
         return JSONResponse(status_code=503, content={"status": "unavailable", "error": str(exc)})
+
+
+@app.get("/api/v1/data/btc-usd/multi-timeframe")
+def btc_usd_multi_timeframe(limit: int = 1000) -> JSONResponse:
+    """Build a causal top-down market map from 1W through 1M BTC/USD data.
+
+    Higher-timeframe candles are exposed to the target 5m context only after
+    the higher-timeframe candle has closed. This endpoint is read-only.
+    """
+    if limit < 50 or limit > 10000:
+        return JSONResponse(
+            status_code=400,
+            content={"status": "error", "error": "limit must be between 50 and 10000"},
+        )
+
+    timeframes = {
+        "1w": "1Week",
+        "1d": "1Day",
+        "4h": "4Hour",
+        "1h": "1Hour",
+        "15m": "15Min",
+        "5m": "5Min",
+        "1m": "1Min",
+    }
+
+    try:
+        frames: dict[str, pd.DataFrame] = {}
+        for key, alpaca_tf in timeframes.items():
+            payload = data_client.get_bars(
+                symbol="BTC/USD",
+                timeframe=alpaca_tf,
+                limit=limit,
+            )
+            frame = _bars_to_frame(payload, "BTC/USD")
+            if not frame.empty:
+                frames[key] = frame
+
+        if "5m" not in frames:
+            return JSONResponse(
+                status_code=503,
+                content={"status": "unavailable", "error": "No BTC/USD 5m bars returned"},
+            )
+
+        mapped = build_market_map(frames, target_timeframe="5m")
+        latest = mapped.iloc[-1].replace({pd.NA: None}).to_dict()
+
+        available = {
+            tf: int(len(frame))
+            for tf, frame in frames.items()
+        }
+
+        return JSONResponse(
+            status_code=200,
+            content={
+                "status": "ok",
+                "symbol": "BTC/USD",
+                "target_timeframe": "5m",
+                "bars_available": available,
+                "hierarchy": describe_hierarchy(),
+                "latest_timestamp": mapped.index[-1].isoformat(),
+                "latest_market_map": latest,
+            },
+        )
+    except Exception as exc:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "unavailable", "error": str(exc)},
+        )
 
 
 @app.get("/api/v1/execution")
