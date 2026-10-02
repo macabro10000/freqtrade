@@ -10,7 +10,7 @@ def _frame():
         {
             "open": close,
             "high": [100, 103, 101, 101, 101],
-            "low": [100, 99, 99, 99, 99],
+            "low": [100, 99.5, 99, 99, 99],
             "close": close,
             "atr_14": 1.0,
         },
@@ -19,9 +19,7 @@ def _frame():
 
 
 def test_first_touch_target():
-    labels = triple_barrier_labels(
-        _frame(), horizon_bars=3, stop_atr=1, target_atr=2
-    )
+    labels = triple_barrier_labels(_frame(), horizon_bars=3, stop_atr=1, target_atr=2)
     assert labels.loc[_frame().index[0], "label_long_outcome"] == "TARGET"
     assert labels.loc[_frame().index[0], "label_long_r"] == 2.0
 
