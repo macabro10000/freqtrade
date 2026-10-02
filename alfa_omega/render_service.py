@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse
 from alfa_omega.data.alpaca_crypto import AlpacaCryptoDataClient
 from alfa_omega.execution.alpaca_paper import AlpacaPaperAdapter
 from alfa_omega.features.feature_engine import build_features
+from alfa_omega.smc.structure_engine import build_structure_features
 
 app = FastAPI(
     title="ALFA OMEGA",
@@ -91,6 +92,8 @@ def status() -> dict[str, Any]:
         "safety_gate": True,
         "data_engine": True,
         "feature_engine": True,
+        "smc_engine": True,
+        "liquidity_engine": True,
         "timestamp": datetime.now(UTC).isoformat(),
     }
 
@@ -132,6 +135,7 @@ def btc_usd_bars(limit: int = 100) -> JSONResponse:
         if frame.empty:
             return JSONResponse(status_code=503, content={"status": "unavailable", "error": "No BTC/USD bars returned"})
         features = build_features(frame)
+        features = build_structure_features(features)
         latest = features.iloc[-1].replace({pd.NA: None}).to_dict()
         return JSONResponse(
             status_code=200,
