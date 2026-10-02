@@ -1,7 +1,7 @@
 """ALFA OMEGA Render service.
 
-Research/control-plane service only. Paper broker access is read-only until
-execution controls are explicitly enabled. No endpoint submits broker orders.
+Research/control-plane service with an explicitly gated Paper smoke-cycle
+endpoint. Normal trading signals still cannot submit orders directly.
 """
 from __future__ import annotations
 
@@ -40,7 +40,7 @@ def _safe_health() -> dict[str, Any]:
         "started_at": STARTED_AT.isoformat(),
         "mode": "PAPER",
         "paper": True,
-        "order_execution_enabled": False,
+        "order_execution_enabled": adapter.order_execution_enabled,
         "provider": "alpaca",
         "broker": result,
     }
@@ -89,7 +89,7 @@ def status() -> dict[str, Any]:
         "mode": "PAPER",
         "paper_provider": "alpaca",
         "paper_market": "BTC/USD",
-        "order_execution_enabled": False,
+        "order_execution_enabled": adapter.order_execution_enabled,
         "live_execution_enabled": False,
         "risk_engine": True,
         "safety_gate": True,
@@ -236,13 +236,29 @@ def execution_status() -> dict[str, Any]:
     return {
         "mode": "PAPER",
         "provider": "alpaca",
-        "read_only": True,
-        "order_submission": False,
+        "read_only": not adapter.order_execution_enabled,
+        "order_submission": adapter.order_execution_enabled,
+        "paper_smoke_test": "EXPLICITLY_GATED",
         "risk_engine": "ENABLED",
         "safety_gate": "ENABLED",
         "live": False,
-        "message": "Broker order submission remains intentionally disabled.",
     }
+
+
+@app.post("/api/v1/paper/smoke-cycle")
+def paper_smoke_cycle(notional_usd: float = 10.0) -> JSONResponse:
+    """Controlled connectivity test: tiny BTC buy followed by sell.
+
+    This is not a strategy and is separately gated by environment variables.
+    """
+    try:
+        result = adapter.run_smoke_cycle(notional_usd=notional_usd)
+        return JSONResponse(status_code=200, content=result)
+    except Exception as exc:
+        return JSONResponse(
+            status_code=403,
+            content={"status": "blocked_or_failed", "error": str(exc)},
+        )
 
 
 @app.get("/ready")
