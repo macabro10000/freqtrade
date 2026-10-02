@@ -200,6 +200,86 @@ class AlpacaPaperAdapter:
         self._trading.cancel_order_by_id(order_id)
         return {"order_id": order_id, "status": "cancel_requested"}
 
+
+    def run_smoke_cycle(
+        self,
+        *,
+        notional_usd: float = 10.0,
+        max_notional_usd: float = 25.0,
+        client_prefix: str = "AO-SMOKE",
+    ) -> dict[str, Any]:
+        """Submit a tiny Paper BUY and close it with a SELL.
+
+        This is a connectivity smoke test, not a trading strategy. It is
+        separately gated and capped so it cannot become a normal execution
+        path accidentally.
+        """
+        self._require_execution_enabled()
+        smoke_raw = os.getenv("ALFA_OMEGA_PAPER_SMOKE_TEST_ENABLE", "false").strip().lower()
+        if smoke_raw not in {"true", "1", "yes"}:
+            raise AlpacaPaperExecutionDisabled(
+                "Paper smoke test is disabled. Set "
+                "ALFA_OMEGA_PAPER_SMOKE_TEST_ENABLE=true explicitly."
+            )
+        if notional_usd <= 0 or notional_usd > max_notional_usd:
+            raise ValueError(f"notional_usd must be between 0 and {max_notional_usd}")
+
+        import time
+        from uuid import uuid4
+
+        client_id = f"{client_prefix}-{uuid4().hex[:12]}"
+        buy_request = MarketOrderRequest(
+            symbol="BTC/USD",
+            notional=notional_usd,
+            side=OrderSide.BUY,
+            time_in_force=TimeInForce.GTC,
+            client_order_id=client_id,
+        )
+        buy = self._trading.submit_order(buy_request)
+        buy_id = str(buy.id)
+
+        deadline = time.monotonic() + 30.0
+        filled = None
+        while time.monotonic() < deadline:
+            current = self._trading.get_order_by_id(buy.id)
+            status = str(current.status).lower()
+            if status in {"filled", "partially_filled"}:
+                filled = float(current.filled_qty or 0.0)
+                if filled > 0:
+                    break
+            if status in {"canceled", "cancelled", "rejected", "expired"}:
+                break
+            time.sleep(1.0)
+
+        if not filled:
+            try:
+                self._trading.cancel_order_by_id(buy.id)
+            except Exception:
+                pass
+            raise RuntimeError(
+                f"Paper smoke BUY did not fill. order_id={buy_id}"
+            )
+
+        sell_id = f"{client_prefix}-EXIT-{uuid4().hex[:12]}"
+        sell_request = MarketOrderRequest(
+            symbol="BTC/USD",
+            qty=filled,
+            side=OrderSide.SELL,
+            time_in_force=TimeInForce.GTC,
+            client_order_id=sell_id,
+        )
+        sell = self._trading.submit_order(sell_request)
+
+        return {
+            "status": "CYCLE_SUBMITTED",
+            "symbol": "BTC/USD",
+            "notional_usd": notional_usd,
+            "buy_order": self._order_to_dict(buy),
+            "filled_buy_qty": filled,
+            "sell_order": self._order_to_dict(sell),
+            "purpose": "paper_connectivity_smoke_test_only",
+        }
+
     @staticmethod
     def _order_to_dict(order: Any) -> dict[str, Any]:
         return {
