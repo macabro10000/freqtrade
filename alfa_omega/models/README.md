@@ -1,11 +1,19 @@
-# MODELS
+# MODELOS
 
-Modelos de Machine Learning y FreqAI.
+Los modelos apoyan la decisión; no generan órdenes por sí mismos.
 
-Los modelos deberán mantener separación estricta entre:
+Separación:
+- TRAIN
+- VALIDATION
+- TEST
+- WALK-FORWARD
 
-- entrenamiento
-- validación
-- prueba
+Salidas posibles:
+- probabilidad LONG
+- probabilidad SHORT
+- probabilidad NO_TRADE
+- retorno esperado
+- riesgo/volatilidad esperada
+- horizonte esperado
 
-Se utilizará walk-forward validation para evaluar estabilidad temporal.
+Toda predicción debe conservar versión del modelo, periodo de entrenamiento y features utilizadas.
