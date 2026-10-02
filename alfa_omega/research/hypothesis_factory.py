@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from hashlib import sha256
 from itertools import combinations
-from typing import Iterable, Sequence
+from collections.abc import Iterable, Sequence
 
 from alfa_omega.research.learning_loop import PatternLesson
 
