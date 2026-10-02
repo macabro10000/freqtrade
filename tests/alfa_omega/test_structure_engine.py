@@ -22,9 +22,9 @@ def test_structure_features_exist_and_are_causal():
     changed.iloc[-1, changed.columns.get_loc("high")] += 10000
     changed.iloc[-1, changed.columns.get_loc("low")] -= 10000
     b = build_structure_features(changed, swing_window=3)
-    cols = ["swing_high_confirmed", "swing_low_confirmed", "hh", "lh", "hl", "ll", "bos_bullish", "bos_bearish", "structure_bias"]
+    cols = [\n        "swing_high_confirmed", "swing_low_confirmed", "hh", "lh", "hl",\n        "ll", "bos_bullish", "bos_bearish", "structure_bias",\n    ]
     assert a[cols].iloc[:-1].equals(b[cols].iloc[:-1])
-    assert {"liquidity_sweep_high", "liquidity_sweep_low", "fvg_bullish_smc", "fvg_bearish_smc", "displacement"}.issubset(a.columns)
+    assert {\n        "liquidity_sweep_high", "liquidity_sweep_low",\n        "fvg_bullish_smc", "fvg_bearish_smc", "displacement",\n    }.issubset(a.columns)
 
 
 def test_no_future_bar_is_used_by_fvg_or_liquidity():
