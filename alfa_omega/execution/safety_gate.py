@@ -17,6 +17,7 @@ class SafetyContext:
     kill_switch: bool
     risk_approved: bool
     stop_loss_valid: bool
+    take_profit_valid: bool
 
 
 @dataclass(frozen=True)
@@ -51,6 +52,9 @@ class SafetyGate:
 
         if not context.stop_loss_valid:
             reasons.append("INVALID_STOP_LOSS")
+
+        if not context.take_profit_valid:
+            reasons.append("INVALID_TAKE_PROFIT")
 
         # Live is deliberately blocked until a later, explicit promotion.
         if context.mode == "LIVE":
