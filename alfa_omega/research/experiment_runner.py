@@ -6,9 +6,9 @@ silently change barrier geometry or horizon parameters.
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
 from hashlib import sha256
-from collections.abc import Mapping, Sequence
 
 from alfa_omega.research.hypothesis_factory import ResearchHypothesis
 
