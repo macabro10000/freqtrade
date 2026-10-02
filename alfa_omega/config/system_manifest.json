@@ -1,0 +1,24 @@
+{
+  "project": "ALFA OMEGA TRADING",
+  "phase": "REBUILD_FOUNDATION",
+  "markets": ["BTC/USD", "XAU/USD"],
+  "decision_timeframes": ["5m", "15m", "1h", "4h", "1d"],
+  "data_timeframes": ["1m", "5m", "15m", "1h", "4h", "1d", "1w"],
+  "execution_enabled": false,
+  "learning_enabled": false,
+  "proprietary_indicators": {
+    "count": 3,
+    "status": "PENDING_INTEGRATION"
+  },
+  "model": {
+    "ml": true,
+    "freqai": true,
+    "status": "PENDING_DATA_AND_FEATURES"
+  },
+  "validation": {
+    "lookahead_protection": true,
+    "walk_forward_required": true,
+    "out_of_sample_required": true
+  },
+  "source_of_truth": "alfa_omega"
+}
