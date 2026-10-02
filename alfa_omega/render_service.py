@@ -47,7 +47,7 @@ def _bars_to_frame(payload: dict[str, Any], symbol: str) -> pd.DataFrame:
     if not bars:
         return pd.DataFrame()
     frame = pd.DataFrame(bars)
-    rename = {"t": "timestamp", "o": "open", "h": "high", "l": "low", "c": "close", "v": "volume"}
+    rename = {"t": "timestamp", "o": "open", "h": "high", "l": "low", "c": "close", "v": "volume", "n": "trade_count"}
     frame = frame.rename(columns=rename)
     if "timestamp" in frame:
         frame["timestamp"] = pd.to_datetime(frame["timestamp"], utc=True)
