@@ -54,7 +54,10 @@ def _bars_to_frame(payload: dict[str, Any], symbol: str) -> pd.DataFrame:
     if not bars:
         return pd.DataFrame()
     frame = pd.DataFrame(bars)
-    rename = {"t": "timestamp", "o": "open", "h": "high", "l": "low", "c": "close", "v": "volume", "n": "trade_count"}
+    rename = {
+        "t": "timestamp", "o": "open", "h": "high", "l": "low",
+        "c": "close", "v": "volume", "n": "trade_count",
+    }
     frame = frame.rename(columns=rename)
     if "timestamp" in frame:
         frame["timestamp"] = pd.to_datetime(frame["timestamp"], utc=True)
@@ -144,7 +147,10 @@ def btc_usd_bars(limit: int = 100) -> JSONResponse:
         payload = data_client.get_bars(symbol="BTC/USD", timeframe="5Min", limit=limit)
         frame = _bars_to_frame(payload, "BTC/USD")
         if frame.empty:
-            return JSONResponse(status_code=503, content={"status": "unavailable", "error": "No BTC/USD bars returned"})
+            return JSONResponse(
+                status_code=503,
+                content={"status": "unavailable", "error": "No BTC/USD bars returned"},
+            )
         features = build_features(frame)
         features = build_structure_features(features)
         features = build_proprietary_features(features)
