@@ -17,11 +17,16 @@ class ExecutionRequest:
     side: str
     entry_price: float
     stop_loss: float
+    take_profit: float
     quantity: float | None
     equity: float
     open_positions: int = 0
     daily_pnl: float = 0.0
     mode: str = "PAPER"
+    allowed_markets: tuple[str, ...] = ("BTC/USD",)
+    broker_healthy: bool = True
+    data_fresh: bool = True
+    kill_switch: bool = True
 
 
 class ExecutionService:
@@ -48,15 +53,24 @@ class ExecutionService:
             (side == "LONG" and request.stop_loss < request.entry_price)
             or (side == "SHORT" and request.stop_loss > request.entry_price)
         )
+        take_profit_direction_valid = (
+            (side == "LONG" and request.take_profit > request.entry_price)
+            or (side == "SHORT" and request.take_profit < request.entry_price)
+        )
         safety = self.safety.evaluate(
             SafetyContext(
                 mode=request.mode,
                 market=request.market,
-                allowed_markets=("BTC/USD",),
-                broker_healthy=True,
-                data_fresh=True,
-                kill_switch=True,
+                allowed_markets=request.allowed_markets,
+                broker_healthy=request.broker_healthy,
+                data_fresh=request.data_fresh,
+                kill_switch=request.kill_switch,
                 risk_approved=risk.approved,
+                take_profit_valid=(
+                    side in {"LONG", "SHORT"}
+                    and take_profit_direction_valid
+                    and request.take_profit > 0
+                ),
                 stop_loss_valid=(
                     side in {"LONG", "SHORT"}
                     and stop_direction_valid
