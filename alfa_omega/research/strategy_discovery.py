@@ -116,7 +116,9 @@ def discover_candidates(
     return candidates
 
 
-def evaluate_candidate(\n    df: pd.DataFrame, candidate: StrategyCandidate\n) -> dict[str, float | int | str]:
+def evaluate_candidate(
+    df: pd.DataFrame, candidate: StrategyCandidate
+) -> dict[str, float | int | str]:
     """Evaluate using chronological first-touch target/stop/time outcomes."""
     mask = pd.Series(True, index=df.index)
     for condition in candidate.long_conditions:
