@@ -15,7 +15,7 @@ timeframe after the higher-timeframe candle has CLOSED.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Mapping
+from collections.abc import Mapping
 
 import pandas as pd
 
