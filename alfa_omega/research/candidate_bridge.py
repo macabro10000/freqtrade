@@ -1,8 +1,8 @@
 """Bridge structured hypotheses into research candidates."""
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
 import hashlib
+from dataclasses import asdict, dataclass
 
 from alfa_omega.memory.memory_store import MemoryStore
 from alfa_omega.research.hypothesis_factory import ResearchHypothesis
