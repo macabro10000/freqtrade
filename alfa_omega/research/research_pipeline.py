@@ -16,7 +16,10 @@ from alfa_omega.research.cost_aware import (
     ExecutionCostModel,
     evaluate_costs,
 )
-from alfa_omega.research.event_labels import build_event_label_artifact
+from alfa_omega.research.event_labels import (
+    EventLabelArtifact,
+    build_event_label_artifact,
+)
 from alfa_omega.research.experiment_evaluator import evaluate_experiment
 from alfa_omega.research.experiment_runner import ExperimentSpec
 from alfa_omega.research.regime_stress import evaluate_regime_stress
@@ -112,7 +115,7 @@ def _regime_mask(
 def _oos_outcomes(
     frame: pd.DataFrame,
     strategy: StrategyCandidate,
-    event_labels,
+    event_labels: EventLabelArtifact,
     candidate: ResearchCandidate,
     regimes: pd.Series | None,
     test_fraction: float,
