@@ -207,7 +207,12 @@ def run_research_pipeline(
         gate=gate,
         sample_size=int(snapshot.rows),
     )
-    if validation.status != "OOS_EVALUATED":
+    # Evidence sufficiency is a higher-level gate than a downstream metric
+    # failure. A small sample must remain INSUFFICIENT_EVIDENCE rather than
+    # being misclassified as an OOS expectancy failure.
+    if snapshot.rows < 200:
+        final_state = "INSUFFICIENT_EVIDENCE"
+    elif validation.status != "OOS_EVALUATED":
         final_state = validation.status
     elif walk_forward.status != "WF_ALL_FOLDS_POSITIVE":
         final_state = walk_forward.status
