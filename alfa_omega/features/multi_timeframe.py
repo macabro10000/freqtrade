@@ -139,23 +139,54 @@ def _completed_parent_features(
     return aligned
 
 
+def _higher_timeframes(target_timeframe: str) -> list[str]:
+    target_minutes = TIMEFRAME_MINUTES[target_timeframe]
+    return [
+        tf
+        for tf in TIMEFRAME_MINUTES
+        if TIMEFRAME_MINUTES[tf] > target_minutes
+    ]
+
+
+def _merge_higher_timeframes(
+    out: pd.DataFrame,
+    frames: Mapping[str, pd.DataFrame],
+    target_timeframe: str,
+) -> pd.DataFrame:
+    for tf in _higher_timeframes(target_timeframe):
+        if tf not in frames:
+            continue
+        aligned = _completed_parent_features(frames[tf], out.index, tf)
+        for column in aligned.columns:
+            if column not in out.columns:
+                out[column] = aligned[column]
+    return out
+
+
+def _add_higher_timeframe_context(
+    out: pd.DataFrame,
+    target_timeframe: str,
+) -> pd.DataFrame:
+    for tf in _higher_timeframes(target_timeframe):
+        close_col = f"htf_{tf}_close"
+        open_col = f"htf_{tf}_open"
+        if close_col not in out.columns or open_col not in out.columns:
+            continue
+        out[f"htf_{tf}_direction"] = (
+            out[close_col] > out[open_col]
+        ).astype("Int64")
+        out[f"htf_{tf}_range_pct"] = (
+            (out[f"htf_{tf}_high"] - out[f"htf_{tf}_low"])
+            / out[close_col].replace(0, pd.NA)
+        )
+    return out
+
+
 def build_market_map(
     frames: Mapping[str, pd.DataFrame],
     target_timeframe: str = "5m",
 ) -> pd.DataFrame:
-    """Build a causal top-down market map for one target timeframe.
-
-    Example:
-        map_5m = build_market_map(
-            {"1w": weekly, "1d": daily, "4h": h4, "1h": h1,
-             "15m": m15, "5m": m5, "1m": m1},
-            target_timeframe="5m",
-        )
-
-    The returned frame keeps the target candle data and adds completed
-    higher-timeframe context. It intentionally does not forward-fill an
-    unfinished weekly/daily/etc. candle.
-    """
+    """Build a causal top-down market map for one target timeframe."""
     if target_timeframe not in TIMEFRAME_MINUTES:
         raise ValueError(f"Unsupported timeframe: {target_timeframe}")
     if target_timeframe not in frames:
@@ -165,39 +196,10 @@ def build_market_map(
     if target.empty:
         return target.copy()
 
-    out = target.copy()
-    target_minutes = TIMEFRAME_MINUTES[target_timeframe]
-
-    for tf in TIMEFRAME_MINUTES:
-        if tf == target_timeframe:
-            continue
-        if TIMEFRAME_MINUTES[tf] <= target_minutes:
-            continue
-        if tf not in frames:
-            continue
-
-        aligned = _completed_parent_features(frames[tf], out.index, tf)
-        for column in aligned.columns:
-            if column not in out.columns:
-                out[column] = aligned[column]
-
-    # Explicit regime/context flags make the hierarchy usable by ML and
-    # explainability layers without pretending that it is a trading signal.
-    for tf in TIMEFRAME_MINUTES:
-        if TIMEFRAME_MINUTES[tf] <= target_minutes:
-            continue
-        close_col = f"htf_{tf}_close"
-        open_col = f"htf_{tf}_open"
-        if close_col in out.columns and open_col in out.columns:
-            out[f"htf_{tf}_direction"] = (
-                out[close_col] > out[open_col]
-            ).astype("Int64")
-            out[f"htf_{tf}_range_pct"] = (
-                (out[f"htf_{tf}_high"] - out[f"htf_{tf}_low"])
-                / out[close_col].replace(0, pd.NA)
-            )
-
-    return out
+    out = _merge_higher_timeframes(
+        target.copy(), frames, target_timeframe
+    )
+    return _add_higher_timeframe_context(out, target_timeframe)
 
 
 def describe_hierarchy() -> dict[str, object]:
