@@ -16,7 +16,7 @@ from typing import Any
 from alpaca.data.historical import CryptoHistoricalDataClient
 from alpaca.data.requests import CryptoLatestTradeRequest
 from alpaca.trading.client import TradingClient
-from alpaca.trading.enums import OrderSide, TimeInForce, OrderType
+from alpaca.trading.enums import OrderSide, TimeInForce
 from alpaca.trading.requests import LimitOrderRequest, MarketOrderRequest, StopLimitOrderRequest
 
 
@@ -269,14 +269,38 @@ class AlpacaPaperAdapter:
             client_order_id=sell_id,
         )
         sell = self._trading.submit_order(sell_request)
+        sell_deadline = time.monotonic() + 30.0
+        sell_filled = False
+        final_sell = sell
+        while time.monotonic() < sell_deadline:
+            final_sell = self._trading.get_order_by_id(sell.id)
+            status = str(final_sell.status).lower()
+            if status == "filled":
+                sell_filled = True
+                break
+            if status in {"canceled", "cancelled", "rejected", "expired"}:
+                break
+            time.sleep(1.0)
+
+        if not sell_filled:
+            return {
+                "status": "EXIT_NOT_CONFIRMED",
+                "symbol": "BTC/USD",
+                "notional_usd": notional_usd,
+                "buy_order": self._order_to_dict(buy),
+                "sell_order": self._order_to_dict(final_sell),
+                "purpose": "paper_connectivity_smoke_test_only",
+                "requires_manual_reconciliation": True,
+            }
 
         return {
-            "status": "CYCLE_SUBMITTED",
+            "status": "CYCLE_FILLED_AND_EXITED",
             "symbol": "BTC/USD",
             "notional_usd": notional_usd,
             "buy_order": self._order_to_dict(buy),
             "filled_buy_qty": filled,
-            "sell_order": self._order_to_dict(sell),
+            "sell_order": self._order_to_dict(final_sell),
+            "filled_sell_qty": float(final_sell.filled_qty or 0.0),
             "purpose": "paper_connectivity_smoke_test_only",
         }
 
