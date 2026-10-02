@@ -20,9 +20,9 @@ def hypothesis():
 
 def test_experiment_is_reproducible():
     kwargs = {
-        dataset_fingerprint="DATA-1",
-        feature_version="F-1",
-        label_version="L-1",
+        "dataset_fingerprint": "DATA-1",
+        "feature_version": "F-1",
+        "label_version": "L-1",
     }
     a = build_experiment(hypothesis(), **kwargs)
     b = build_experiment(hypothesis(), **kwargs)
