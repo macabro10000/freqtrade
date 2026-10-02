@@ -123,7 +123,7 @@ def record_error(
         category=category,
         message=message,
         metric=metric,
-        created_at=datetime.now(timezone.utc).isoformat(),
+        created_at=datetime.now(UTC).isoformat(),
     )
 
 
