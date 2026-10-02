@@ -3,6 +3,7 @@
 This module is deliberately orchestration-only: it does not place orders,
 change live configuration, or promote a candidate without the research gate.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -15,6 +16,7 @@ from alfa_omega.research.cost_aware import (
     ExecutionCostModel,
     evaluate_costs,
 )
+from alfa_omega.research.event_labels import build_event_label_artifact
 from alfa_omega.research.experiment_evaluator import evaluate_experiment
 from alfa_omega.research.experiment_runner import ExperimentSpec
 from alfa_omega.research.regime_stress import evaluate_regime_stress
@@ -22,12 +24,15 @@ from alfa_omega.research.research_policy import (
     ResearchGate,
     classify_research_candidate,
 )
-from alfa_omega.research.strategy_discovery import (
-    StrategyCandidate,
-    triple_barrier_labels,
+from alfa_omega.research.strategy_discovery import StrategyCandidate
+from alfa_omega.research.validation_engine import (
+    ValidationResult,
+    validate_experiment,
 )
-from alfa_omega.research.validation_engine import ValidationResult, validate_experiment
-from alfa_omega.research.walk_forward import WalkForwardResult, walk_forward_validate
+from alfa_omega.research.walk_forward import (
+    WalkForwardResult,
+    walk_forward_validate,
+)
 
 
 @dataclass(frozen=True)
@@ -40,14 +45,17 @@ class ResearchPipelineResult:
     final_state: str
 
 
-def _strategy_candidate(candidate: ResearchCandidate) -> StrategyCandidate:
+def _strategy_candidate(
+    candidate: ResearchCandidate,
+    spec: ExperimentSpec,
+) -> StrategyCandidate:
     return StrategyCandidate(
         strategy_id=candidate.hypothesis_id,
         long_conditions=candidate.conditions,
         short_conditions=(),
-        horizon_bars=5,
-        stop_atr=1.0,
-        target_atr=2.0,
+        horizon_bars=spec.horizon_bars,
+        stop_atr=spec.stop_atr,
+        target_atr=spec.target_atr,
     )
 
 
@@ -83,23 +91,60 @@ def _session_mask(frame: pd.DataFrame, session: str) -> pd.Series:
     return frame["session_primary"].eq(session)
 
 
+def _regime_mask(
+    frame: pd.DataFrame,
+    candidate_regime: str,
+    regimes: pd.Series | None,
+) -> pd.Series:
+    if candidate_regime in {"", "ALL", "ANY"}:
+        return pd.Series(True, index=frame.index)
+
+    source = regimes
+    if source is None:
+        if "mi_regime" not in frame.columns:
+            raise ValueError("regime data required for regime-specific research")
+        source = frame["mi_regime"]
+
+    aligned = source.reindex(frame.index)
+    return aligned.eq(candidate_regime).fillna(False)
+
+
 def _oos_outcomes(
     frame: pd.DataFrame,
     strategy: StrategyCandidate,
-    session: str,
+    candidate: ResearchCandidate,
+    regimes: pd.Series | None,
     test_fraction: float,
 ) -> tuple[pd.Series, pd.Series]:
-    test_start = frame.index[max(1, int(len(frame) * (1.0 - test_fraction)))]
-    test = frame.loc[frame.index >= test_start]
-    mask = _condition_mask(test, strategy) & _session_mask(test, session)
-    labels = triple_barrier_labels(
-        test,
+    test_start_pos = max(1, int(len(frame) * (1.0 - test_fraction)))
+    test_start = frame.index[test_start_pos]
+
+    # Labels are computed on the full timeline BEFORE session/regime filtering.
+    artifact = build_event_label_artifact(
+        frame,
         horizon_bars=strategy.horizon_bars,
         stop_atr=strategy.stop_atr,
         target_atr=strategy.target_atr,
-    ).loc[mask]
-    labels = labels.loc[labels["label_long_r"].notna()]
-    return labels["label_long_r"], test.loc[labels.index, "mi_regime"]
+    )
+    test = frame.loc[frame.index >= test_start]
+    context_mask = (
+        _condition_mask(test, strategy)
+        & _session_mask(test, candidate.session)
+        & _regime_mask(test, candidate.regime, regimes)
+    )
+    selected = test.loc[context_mask.fillna(False)]
+    labels = artifact.labels.reindex(selected.index)
+    valid = labels["label_long_r"].notna()
+    selected = selected.loc[valid]
+    labels = labels.loc[valid]
+
+    return labels["label_long_r"], (
+        (
+            regimes.reindex(selected.index)
+            if regimes is not None
+            else selected["mi_regime"]
+        )
+    )
 
 
 def run_research_pipeline(
@@ -115,22 +160,26 @@ def run_research_pipeline(
     """Run OOS, walk-forward, cost and regime evidence for one candidate."""
     if frame.empty:
         raise ValueError("research frame is empty")
-    strategy = _strategy_candidate(candidate)
-    validation = validate_experiment(spec, frame, strategy, test_fraction=test_fraction)
+
+    strategy = _strategy_candidate(candidate, spec)
+    validation = validate_experiment(
+        spec,
+        frame,
+        strategy,
+        test_fraction=test_fraction,
+    )
     walk_forward = walk_forward_validate(frame, strategy)
     snapshot = evaluate_experiment(spec, frame, strategy)
 
     r_values, inferred_regimes = _oos_outcomes(
         frame,
         strategy,
-        candidate.session,
+        candidate,
+        regimes,
         test_fraction,
     )
-    regime_values = inferred_regimes
-    if regimes is not None:
-        regime_values = regimes.reindex(r_values.index)
     regime_result = evaluate_regime_stress(
-        regime_values.tolist(),
+        inferred_regimes.tolist(),
         r_values.tolist(),
     )
     cost_aware = evaluate_costs(
