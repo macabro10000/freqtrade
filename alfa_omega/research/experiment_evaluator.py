@@ -84,7 +84,7 @@ def evaluate_experiment(
         gross_profit = float(r.where(r > 0, 0).sum())
         gross_loss = float(-r.where(r < 0, 0).sum())
         metrics = {
-            "trades": int(len(r)),
+            "trades": len(r),
             "win_rate": float(wins.loc[r.index].mean()),
             "expectancy_r": float(r.mean()),
             "profit_factor": (
