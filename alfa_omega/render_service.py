@@ -273,9 +273,15 @@ def control_market(
     x_alfa_omega_control_token: str | None = Header(default=None),
 ) -> JSONResponse:
     if not _control_authorized(x_alfa_omega_control_token):
-        return JSONResponse(status_code=403, content={"status": "forbidden", "reason": "INVALID_CONTROL_TOKEN"})
+        return JSONResponse(
+            status_code=403,
+            content={"status": "forbidden", "reason": "INVALID_CONTROL_TOKEN"},
+        )
     try:
-        return JSONResponse(status_code=200, content=control_service.set_market(request.market).public_dict())
+        return JSONResponse(
+            status_code=200,
+            content=control_service.set_market(request.market).public_dict(),
+        )
     except ValueError as exc:
         return JSONResponse(status_code=400, content={"status": "rejected", "reason": str(exc)})
 
@@ -288,7 +294,10 @@ def control_timeframe(
     if not _control_authorized(x_alfa_omega_control_token):
         return JSONResponse(status_code=403, content={"status": "forbidden", "reason": "INVALID_CONTROL_TOKEN"})
     try:
-        return JSONResponse(status_code=200, content=control_service.set_timeframe(request.timeframe).public_dict())
+        return JSONResponse(
+            status_code=200,
+            content=control_service.set_timeframe(request.timeframe).public_dict(),
+        )
     except ValueError as exc:
         return JSONResponse(status_code=400, content={"status": "rejected", "reason": str(exc)})
 
