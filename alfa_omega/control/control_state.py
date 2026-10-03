@@ -39,6 +39,7 @@ class ControlState:
     def with_updates(self, **changes: Any) -> ControlState:
         data = asdict(self)
         data.update(changes)
+        data["version"] = self.version + 1
         data["updated_at"] = datetime.now(UTC).isoformat()
         return ControlState(**data)
 
