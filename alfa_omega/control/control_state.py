@@ -36,7 +36,7 @@ class ControlState:
         if self.version < 1:
             raise ValueError("Invalid control state version")
 
-    def with_updates(self, **changes: Any) -> "ControlState":
+    def with_updates(self, **changes: Any) -> ControlState:
         data = asdict(self)
         data.update(changes)
         data["updated_at"] = datetime.now(UTC).isoformat()
