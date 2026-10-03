@@ -3,8 +3,8 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from alfa_omega.data.market_file_classifier import MarketDataFileCandidate
 from alfa_omega.data.huggingface_market_reader import read_market_data_file
+from alfa_omega.data.market_file_classifier import MarketDataFileCandidate
 
 
 def _candidate(path="btc/BTCUSD_5m.csv", file_format="csv"):
