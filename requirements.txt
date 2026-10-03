@@ -9,6 +9,9 @@ huggingface_hub>=1.24,<2.0
 # Alpaca Paper execution adapter
 alpaca-py>=0.43.0,<1.0
 
+# Durable ALFA OMEGA control state
+pymongo>=4.15,<5.0
+
 # Indicator libraries
 ft-pandas-ta==0.3.16
 ta-lib==0.8.0
