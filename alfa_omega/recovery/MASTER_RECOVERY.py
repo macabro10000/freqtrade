@@ -16,6 +16,8 @@ import os
 import subprocess
 import sys
 from datetime import UTC, datetime
+from pathlib import Path
+
 
 # ------------------------------------------------------------
 # CONFIGURACIÓN
@@ -68,30 +70,22 @@ def utc_now():
 def create_local_structure():
 
     directories = [
-        LOCAL_ROOT,
-        RECOVERY_ROOT,
+        Path(LOCAL_ROOT),
+        Path(RECOVERY_ROOT),
     ]
 
     for market in MARKETS:
 
-        market_root = os.path.join(
-            LOCAL_ROOT,
-            market
-        )
+        market_root = Path(LOCAL_ROOT) / market
 
         directories.append(market_root)
 
         for timeframe in TIMEFRAMES:
 
-            directories.append(
-                os.path.join(
-                    market_root,
-                    timeframe
-                )
-            )
+            directories.append(market_root / timeframe)
 
     for directory in directories:
-        os.makedirs(directory, exist_ok=True)
+        directory.mkdir(parents=True, exist_ok=True)
 
 # ------------------------------------------------------------
 # INSTALAR DEPENDENCIAS
@@ -153,7 +147,7 @@ def load_colab_secrets():
 
 def check_github(token):
 
-    from github import Github, Auth
+    from github import Auth, Github
 
     auth = Auth.Token(token)
 
@@ -277,24 +271,21 @@ def check_render():
 def scan_local_data():
 
     result = {
-        "root_exists": os.path.exists(LOCAL_ROOT),
+        "root_exists": Path(LOCAL_ROOT).exists(),
         "files": [],
     }
 
-    if not os.path.exists(LOCAL_ROOT):
+    if not Path(LOCAL_ROOT).exists():
         return result
 
     for root, _dirs, files in os.walk(LOCAL_ROOT):
 
         for filename in files:
 
-            path = os.path.join(
-                root,
-                filename
-            )
+            path = Path(root) / filename
 
             try:
-                size = os.path.getsize(path)
+                size = path.stat().st_size
             except Exception:
                 size = None
 
@@ -459,21 +450,11 @@ def run_recovery():
 
     }
 
-    os.makedirs(
-        RECOVERY_ROOT,
-        exist_ok=True
-    )
+    Path(RECOVERY_ROOT).mkdir(parents=True, exist_ok=True)
 
-    state_path = os.path.join(
-        RECOVERY_ROOT,
-        "runtime_state.json"
-    )
+    state_path = Path(RECOVERY_ROOT) / "runtime_state.json"
 
-    with open(
-        state_path,
-        "w",
-        encoding="utf-8",
-    ) as file:
+    with state_path.open("w", encoding="utf-8") as file:
 
         json.dump(
             state,
