@@ -18,13 +18,13 @@ from decimal import ROUND_DOWN, Decimal
 from typing import Any
 from uuid import uuid4
 
-LOGGER = logging.getLogger(__name__)
-
 from alpaca.data.historical import CryptoHistoricalDataClient
 from alpaca.data.requests import CryptoLatestTradeRequest
 from alpaca.trading.client import TradingClient
 from alpaca.trading.enums import OrderSide, TimeInForce
 from alpaca.trading.requests import LimitOrderRequest, MarketOrderRequest, StopLimitOrderRequest
+
+LOGGER = logging.getLogger(__name__)
 
 
 class AlpacaPaperConfigurationError(RuntimeError):
