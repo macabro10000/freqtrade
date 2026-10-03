@@ -14,9 +14,9 @@ import math
 import os
 import time
 from datetime import UTC, datetime
-from decimal import Decimal, ROUND_DOWN
-from uuid import uuid4
+from decimal import ROUND_DOWN, Decimal
 from typing import Any
+from uuid import uuid4
 
 LOGGER = logging.getLogger(__name__)
 
@@ -24,11 +24,7 @@ from alpaca.data.historical import CryptoHistoricalDataClient
 from alpaca.data.requests import CryptoLatestTradeRequest
 from alpaca.trading.client import TradingClient
 from alpaca.trading.enums import OrderSide, TimeInForce
-from alpaca.trading.requests import (
-    LimitOrderRequest,
-    MarketOrderRequest,
-    StopLimitOrderRequest,
-)
+from alpaca.trading.requests import LimitOrderRequest, MarketOrderRequest, StopLimitOrderRequest
 
 
 class AlpacaPaperConfigurationError(RuntimeError):
@@ -52,7 +48,9 @@ class AlpacaPaperAdapter:
         self._api_key = api_key or os.getenv("ALPACA_API_KEY")
         self._secret_key = secret_key or os.getenv("ALPACA_SECRET_KEY")
         paper_raw = os.getenv("ALPACA_PAPER", "true").strip().lower()
-        execution_raw = os.getenv("ALFA_OMEGA_PAPER_EXECUTION_ENABLE", "false").strip().lower()
+        execution_raw = os.getenv(
+            "ALFA_OMEGA_PAPER_EXECUTION_ENABLE", "false"
+        ).strip().lower()
 
         if not self._api_key or not self._secret_key:
             raise AlpacaPaperConfigurationError(
@@ -167,7 +165,10 @@ class AlpacaPaperAdapter:
         if qty <= 0 or stop_price <= 0 or limit_price <= 0:
             raise ValueError("qty and prices must be positive")
         if limit_price >= stop_price:
-            raise ValueError("For a long-position stop-limit exit, limit_price must be below stop_price")
+            raise ValueError(
+                "For a long-position stop-limit exit, "
+                "limit_price must be below stop_price"
+            )
 
         request = StopLimitOrderRequest(
             symbol=symbol,
@@ -210,7 +211,6 @@ class AlpacaPaperAdapter:
         self._require_execution_enabled()
         self._trading.cancel_order_by_id(order_id)
         return {"order_id": order_id, "status": "cancel_requested"}
-
 
     def _smoke_baseline(self, symbol: str) -> tuple[Decimal, bool]:
         baseline_qty = Decimal("0")
@@ -351,7 +351,8 @@ class AlpacaPaperAdapter:
             self._cancel_order_safely(buy.id)
             raise RuntimeError(
                 f"Paper smoke BUY did not fill. order_id={buy.id}; "
-                f"reference_price={reference_price}; limit_price={buy_limit_price}; "
+                f"reference_price={reference_price}; "
+                f"limit_price={buy_limit_price}; "
                 f"requested_qty={float(qty)}"
             )
 
@@ -387,8 +388,10 @@ class AlpacaPaperAdapter:
 
         filled_sell_qty = Decimal(str(final_sell.filled_qty or 0.0))
         expected_post_qty = baseline_qty + Decimal(str(filled)) - filled_sell_qty
-        observed_post_qty, position_error, reconciled = self._reconcile_smoke_position(
-            symbol, expected_post_qty, increment
+        observed_post_qty, position_error, reconciled = (
+            self._reconcile_smoke_position(
+                symbol, expected_post_qty, increment
+            )
         )
         if not reconciled:
             return {
@@ -415,7 +418,8 @@ class AlpacaPaperAdapter:
                 "requires_manual_reconciliation": True,
             }
 
-        assert observed_post_qty is not None
+        if observed_post_qty is None:
+            raise RuntimeError("Position reconciliation returned no observed quantity.")
         return {
             "status": "CYCLE_FILLED_AND_RECONCILED",
             "symbol": symbol,
