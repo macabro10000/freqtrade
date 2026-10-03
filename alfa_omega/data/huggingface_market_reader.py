@@ -66,6 +66,9 @@ def _set_utc_index(frame: pd.DataFrame) -> pd.DataFrame:
     if timestamps.isna().any():
         raise ValueError("invalid timestamp values")
 
+    if isinstance(timestamps, pd.Series):
+        timestamps = pd.DatetimeIndex(timestamps)
+
     if timestamps.tz is None:
         timestamps = timestamps.tz_localize("UTC")
     else:
