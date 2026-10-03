@@ -5,12 +5,15 @@ endpoint. Normal trading signals still cannot submit orders directly.
 """
 from __future__ import annotations
 
+import hmac
+import os
 from datetime import UTC, datetime
 from typing import Any
 
 import pandas as pd
-from fastapi import FastAPI
+from fastapi import FastAPI, Header
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 
 from alfa_omega.data.alpaca_crypto import AlpacaCryptoDataClient
 from alfa_omega.execution.alpaca_paper import AlpacaPaperAdapter
@@ -33,6 +36,10 @@ app = FastAPI(
 STARTED_AT = datetime.now(UTC)
 adapter = AlpacaPaperAdapter()
 data_client = AlpacaCryptoDataClient()
+
+
+class PaperSmokeRequest(BaseModel):
+    confirmation: str
 
 
 def _safe_health() -> dict[str, Any]:
@@ -217,10 +224,7 @@ def btc_usd_multi_timeframe(limit: int = 1000) -> JSONResponse:
         mapped = build_market_map(frames, target_timeframe="5m")
         latest = mapped.iloc[-1].replace({pd.NA: None}).to_dict()
 
-        available = {
-            tf: len(frame)
-            for tf, frame in frames.items()
-        }
+        available = {tf: len(frame) for tf, frame in frames.items()}
 
         return JSONResponse(
             status_code=200,
@@ -249,10 +253,50 @@ def execution_status() -> dict[str, Any]:
         "read_only": not adapter.order_execution_enabled,
         "order_submission": adapter.order_execution_enabled,
         "paper_smoke_test": "EXPLICITLY_GATED",
+        "paper_smoke_trigger": "POST /api/v1/execution/paper-smoke",
         "risk_engine": "ENABLED",
         "safety_gate": "ENABLED",
         "live": False,
     }
+
+
+@app.post("/api/v1/execution/paper-smoke")
+def paper_smoke(
+    request: PaperSmokeRequest,
+    x_alfa_omega_smoke_token: str | None = Header(default=None),
+) -> JSONResponse:
+    """Run one explicitly confirmed Alpaca Paper BUY→SELL smoke cycle.
+
+    The route is intentionally POST-only and requires a dedicated runtime
+    secret plus an exact confirmation string. It never enables LIVE trading.
+    """
+    expected_token = os.getenv("ALFA_OMEGA_PAPER_SMOKE_TRIGGER_TOKEN")
+    if not expected_token:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "disabled", "reason": "PAPER_SMOKE_TRIGGER_TOKEN_NOT_CONFIGURED"},
+        )
+    if not x_alfa_omega_smoke_token or not hmac.compare_digest(
+        x_alfa_omega_smoke_token, expected_token
+    ):
+        return JSONResponse(
+            status_code=403,
+            content={"status": "forbidden", "reason": "INVALID_SMOKE_TRIGGER_TOKEN"},
+        )
+    if request.confirmation != "PAPER_SMOKE_BUY_SELL":
+        return JSONResponse(
+            status_code=400,
+            content={"status": "rejected", "reason": "EXPLICIT_CONFIRMATION_REQUIRED"},
+        )
+
+    try:
+        result = adapter.run_smoke_cycle()
+        return JSONResponse(status_code=200, content=result)
+    except Exception as exc:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "failed", "error": str(exc)},
+        )
 
 
 @app.get("/ready")
