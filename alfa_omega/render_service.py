@@ -16,6 +16,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from alfa_omega.control.control_service import ControlService
+from alfa_omega.control.control_store import MongoControlStateStore
 from alfa_omega.data.alpaca_crypto import AlpacaCryptoDataClient
 from alfa_omega.execution.alpaca_paper import AlpacaPaperAdapter
 from alfa_omega.features.feature_engine import build_features
@@ -37,7 +38,12 @@ app = FastAPI(
 STARTED_AT = datetime.now(UTC)
 adapter = AlpacaPaperAdapter()
 data_client = AlpacaCryptoDataClient()
-control_service = ControlService()
+def _build_control_service() -> ControlService:
+    store = MongoControlStateStore.from_environment()
+    return ControlService(store=store) if store is not None else ControlService()
+
+
+control_service = _build_control_service()
 
 
 class PaperSmokeRequest(BaseModel):
