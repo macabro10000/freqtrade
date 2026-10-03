@@ -3,6 +3,9 @@ pandas==3.0.5
 bottleneck==1.6.0
 numexpr==2.14.2
 scipy==1.17.1
+# ALFA OMEGA data source client
+huggingface_hub>=1.24,<2.0
+
 # Alpaca Paper execution adapter
 alpaca-py>=0.43.0,<1.0
 
