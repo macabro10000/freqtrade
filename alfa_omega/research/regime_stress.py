@@ -92,8 +92,10 @@ def evaluate_regime_stress(
         mean_expectancy_r=sum(expectancies) / len(expectancies),
         notes=(
             "Regime results are descriptive evidence, not an automatic promotion decision.",
-            "Regime labels must be generated causally from information "
-            "available at the decision timestamp.",
+            (
+                "Regime labels must be generated causally from information "
+                "available at the decision timestamp."
+            ),
         ),
     )
 
