@@ -107,7 +107,7 @@ def build_research_dataset(
     )
     manifest = {
         "dataset": asdict(spec),
-        "rows": int(len(dataset)),
+        "rows": len(dataset),
         "feature_count": len(feature_cols),
         "label_count": len(label_cols),
         "feature_fingerprint": _fingerprint_columns(feature_cols),
