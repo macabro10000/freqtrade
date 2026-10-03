@@ -23,6 +23,7 @@ from alfa_omega.intelligence.market_intelligence import (
 )
 from alfa_omega.smc.structure_engine import build_structure_features
 
+
 app = FastAPI(
     title="ALFA OMEGA",
     version="0.2.0",
@@ -162,7 +163,7 @@ def btc_usd_bars(limit: int = 100) -> JSONResponse:
                 "status": "ok",
                 "symbol": "BTC/USD",
                 "timeframe": "5Min",
-                "bars_received": int(len(frame)),
+                "bars_received": len(frame),
                 "latest_timestamp": features.index[-1].isoformat(),
                 "latest_features": latest,
                 "market_state": latest_market_state(features),
@@ -217,7 +218,7 @@ def btc_usd_multi_timeframe(limit: int = 1000) -> JSONResponse:
         latest = mapped.iloc[-1].replace({pd.NA: None}).to_dict()
 
         available = {
-            tf: int(len(frame))
+            tf: len(frame)
             for tf, frame in frames.items()
         }
 
