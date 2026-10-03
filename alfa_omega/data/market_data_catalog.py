@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterable
 
-from alfa_omega.data.huggingface_catalog import HuggingFaceFile, HuggingFaceInventory
+from alfa_omega.data.huggingface_catalog import HuggingFaceInventory
 from alfa_omega.data.market_file_classifier import classify_inventory
 
 
