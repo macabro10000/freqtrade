@@ -292,7 +292,10 @@ def control_timeframe(
     x_alfa_omega_control_token: str | None = Header(default=None),
 ) -> JSONResponse:
     if not _control_authorized(x_alfa_omega_control_token):
-        return JSONResponse(status_code=403, content={"status": "forbidden", "reason": "INVALID_CONTROL_TOKEN"})
+        return JSONResponse(
+            status_code=403,
+            content={"status": "forbidden", "reason": "INVALID_CONTROL_TOKEN"},
+        )
     try:
         return JSONResponse(
             status_code=200,
