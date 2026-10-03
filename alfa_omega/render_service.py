@@ -15,6 +15,7 @@ from fastapi import FastAPI, Header
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+from alfa_omega.control.control_service import ControlService
 from alfa_omega.data.alpaca_crypto import AlpacaCryptoDataClient
 from alfa_omega.execution.alpaca_paper import AlpacaPaperAdapter
 from alfa_omega.features.feature_engine import build_features
@@ -36,10 +37,24 @@ app = FastAPI(
 STARTED_AT = datetime.now(UTC)
 adapter = AlpacaPaperAdapter()
 data_client = AlpacaCryptoDataClient()
+control_service = ControlService()
 
 
 class PaperSmokeRequest(BaseModel):
     confirmation: str
+
+
+class MarketRequest(BaseModel):
+    market: str
+
+
+class TimeframeRequest(BaseModel):
+    timeframe: str
+
+
+def _control_authorized(token: str | None) -> bool:
+    expected = os.getenv("ALFA_OMEGA_CONTROL_TOKEN")
+    return bool(expected and token and hmac.compare_digest(token, expected))
 
 
 def _safe_health() -> dict[str, Any]:
@@ -103,6 +118,7 @@ def status() -> dict[str, Any]:
         "mode": "PAPER",
         "paper_provider": "alpaca",
         "paper_market": "BTC/USD",
+        "control": control_service.snapshot(),
         "order_execution_enabled": adapter.order_execution_enabled,
         "live_execution_enabled": False,
         "risk_engine": True,
@@ -243,6 +259,56 @@ def btc_usd_multi_timeframe(limit: int = 1000) -> JSONResponse:
             status_code=503,
             content={"status": "unavailable", "error": str(exc)},
         )
+
+
+@app.get("/api/v1/control/state")
+def control_state() -> dict[str, Any]:
+    """Return current control-plane state without broker access."""
+    return control_service.snapshot()
+
+
+@app.post("/api/v1/control/market")
+def control_market(
+    request: MarketRequest,
+    x_alfa_omega_control_token: str | None = Header(default=None),
+) -> JSONResponse:
+    if not _control_authorized(x_alfa_omega_control_token):
+        return JSONResponse(status_code=403, content={"status": "forbidden", "reason": "INVALID_CONTROL_TOKEN"})
+    try:
+        return JSONResponse(status_code=200, content=control_service.set_market(request.market).public_dict())
+    except ValueError as exc:
+        return JSONResponse(status_code=400, content={"status": "rejected", "reason": str(exc)})
+
+
+@app.post("/api/v1/control/timeframe")
+def control_timeframe(
+    request: TimeframeRequest,
+    x_alfa_omega_control_token: str | None = Header(default=None),
+) -> JSONResponse:
+    if not _control_authorized(x_alfa_omega_control_token):
+        return JSONResponse(status_code=403, content={"status": "forbidden", "reason": "INVALID_CONTROL_TOKEN"})
+    try:
+        return JSONResponse(status_code=200, content=control_service.set_timeframe(request.timeframe).public_dict())
+    except ValueError as exc:
+        return JSONResponse(status_code=400, content={"status": "rejected", "reason": str(exc)})
+
+
+@app.post("/api/v1/control/execution/connect")
+def control_connect(
+    x_alfa_omega_control_token: str | None = Header(default=None),
+) -> JSONResponse:
+    if not _control_authorized(x_alfa_omega_control_token):
+        return JSONResponse(status_code=403, content={"status": "forbidden", "reason": "INVALID_CONTROL_TOKEN"})
+    return JSONResponse(status_code=200, content=control_service.connect_execution().public_dict())
+
+
+@app.post("/api/v1/control/execution/stop")
+def control_stop(
+    x_alfa_omega_control_token: str | None = Header(default=None),
+) -> JSONResponse:
+    if not _control_authorized(x_alfa_omega_control_token):
+        return JSONResponse(status_code=403, content={"status": "forbidden", "reason": "INVALID_CONTROL_TOKEN"})
+    return JSONResponse(status_code=200, content=control_service.stop_execution().public_dict())
 
 
 @app.get("/api/v1/execution")
