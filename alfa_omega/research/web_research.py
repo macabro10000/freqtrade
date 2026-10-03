@@ -122,7 +122,7 @@ def build_finding(
     if not 0.0 <= confidence <= 1.0:
         raise ValueError("confidence must be in [0, 1]")
     finding_id = "FIND-" + hashlib.sha256(
-        f"{source.source_id}|{topic}|{claim}".encode("utf-8")
+        f"{source.source_id}|{topic}|{claim}".encode()
     ).hexdigest()[:16]
     return ResearchFinding(
         finding_id=finding_id,
