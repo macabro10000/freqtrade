@@ -103,7 +103,7 @@ def inspect_data_quality(frame: pd.DataFrame, timeframe: str) -> DataQuality:
         deltas = index[1:] - index[:-1]
         expected = _TIMEFRAME_DELTAS[timeframe]
         gaps = deltas[deltas > expected]
-        gap_count = int(len(gaps))
+        gap_count = len(gaps)
         if gap_count:
             max_gap_seconds = float(gaps.max().total_seconds())
 
