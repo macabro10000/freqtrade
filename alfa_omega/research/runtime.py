@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import signal
 import threading
-import time
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from typing import Callable
