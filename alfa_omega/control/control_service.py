@@ -29,8 +29,14 @@ class ControlService:
         with self._lock:
             return self._state
 
+    @property
+    def persistence_backend(self) -> str:
+        return "mongo" if self._store is not None else "process_local"
+
     def snapshot(self) -> dict[str, Any]:
-        return self.get_state().public_dict()
+        data = self.get_state().public_dict()
+        data["persistence_backend"] = self.persistence_backend
+        return data
 
     def set_market(self, market: str) -> ControlState:
         with self._lock:
