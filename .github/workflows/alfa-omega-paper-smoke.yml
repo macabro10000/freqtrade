@@ -1,0 +1,26 @@
+name: ALFA OMEGA — Controlled Paper Smoke
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  paper-smoke:
+    name: Execute one protected Paper BUY → SELL smoke cycle
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Trigger protected Render endpoint
+        env:
+          TOKEN: ${{ secrets.ALFA_OMEGA_PAPER_SMOKE_TRIGGER_TOKEN }}
+          ENDPOINT: https://alfa-omega-trading.onrender.com/api/v1/execution/paper-smoke
+        run: |
+          set -euo pipefail
+          test -n "$TOKEN"
+          curl --fail-with-body --silent --show-error \
+            --request POST "$ENDPOINT" \
+            --header "X-Alfa-Omega-Smoke-Token: $TOKEN" \
+            --header "Content-Type: application/json" \
+            --data '{"confirmation":"PAPER_SMOKE_BUY_SELL"}'
