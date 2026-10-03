@@ -9,14 +9,12 @@ from __future__ import annotations
 import os
 from typing import Any
 
-HF_TOKEN_ENV = "HF_TOKEN"
-
 
 def create_huggingface_api() -> Any:
-    """Create an authenticated Hugging Face API client from HF_TOKEN."""
-    token = os.getenv(HF_TOKEN_ENV)
+    """Create an authenticated Hugging Face API client from the runtime token."""
+    token = os.getenv("HF_TOKEN")
     if not token:
-        raise RuntimeError(f"{HF_TOKEN_ENV} is not configured")
+        raise RuntimeError("HF_TOKEN is not configured")
 
     try:
         from huggingface_hub import HfApi
