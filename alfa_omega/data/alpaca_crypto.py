@@ -6,7 +6,7 @@ variables and are never persisted by this module.
 from __future__ import annotations
 
 import os
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
@@ -68,5 +68,5 @@ class AlpacaCryptoDataClient:
     @staticmethod
     def _iso(value: datetime) -> str:
         if value.tzinfo is None:
-            value = value.replace(tzinfo=timezone.utc)
+            value = value.replace(tzinfo=UTC)
         return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
