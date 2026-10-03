@@ -22,7 +22,12 @@ from alpaca.data.historical import CryptoHistoricalDataClient
 from alpaca.data.requests import CryptoLatestTradeRequest
 from alpaca.trading.client import TradingClient
 from alpaca.trading.enums import OrderSide, TimeInForce
-from alpaca.trading.requests import LimitOrderRequest, MarketOrderRequest, StopLimitOrderRequest
+from alpaca.trading.requests import (
+    LimitOrderRequest,
+    MarketOrderRequest,
+    StopLimitOrderRequest,
+)
+
 
 LOGGER = logging.getLogger(__name__)
 
@@ -58,10 +63,7 @@ class AlpacaPaperAdapter:
             )
         if paper_raw not in {"true", "1", "yes"}:
             raise AlpacaPaperConfigurationError("ALPACA_PAPER=true is mandatory.")
-        if execution_raw not in {"true", "1", "yes"}:
-            self.order_execution_enabled = False
-        else:
-            self.order_execution_enabled = True
+        self.order_execution_enabled = execution_raw in {"true", "1", "yes"}
 
         self._trading = TradingClient(
             api_key=self._api_key,
@@ -213,7 +215,7 @@ class AlpacaPaperAdapter:
         return {"order_id": order_id, "status": "cancel_requested"}
 
     def _smoke_baseline(self, symbol: str) -> tuple[Decimal, bool]:
-        baseline_qty = Decimal("0")
+        baseline_qty = Decimal(0)
         baseline_found = False
         for position in self._trading.get_all_positions():
             if position.symbol == symbol:
@@ -231,8 +233,7 @@ class AlpacaPaperAdapter:
     ) -> tuple[Decimal, float]:
         raw_qty = Decimal(str(notional_usd)) / Decimal(str(reference_price))
         qty = raw_qty.quantize(increment, rounding=ROUND_DOWN)
-        if qty < increment:
-            qty = increment
+        qty = max(qty, increment)
         effective_notional = float(qty) * reference_price
         if effective_notional > max_notional_usd:
             qty = (
@@ -282,7 +283,7 @@ class AlpacaPaperAdapter:
         deadline = time.monotonic() + 15.0
         while time.monotonic() < deadline:
             try:
-                observed_post_qty = Decimal("0")
+                observed_post_qty = Decimal(0)
                 for position in self._trading.get_all_positions():
                     if position.symbol == symbol:
                         observed_post_qty = Decimal(str(position.qty))
