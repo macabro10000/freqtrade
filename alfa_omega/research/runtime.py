@@ -4,14 +4,13 @@ The runtime is intentionally separate from FastAPI and broker execution.
 It plans research work, records heartbeats, and can be stopped gracefully.
 It never submits orders and never enables execution.
 """
-
 from __future__ import annotations
 
 import signal
 import threading
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
-from typing import Callable
 
 from alfa_omega.control.control_service import ControlService
 from alfa_omega.memory.memory_store import MemoryStore
@@ -60,6 +59,7 @@ class ResearchRuntime:
         self._stop_event = threading.Event()
         self._status_lock = threading.Lock()
         now = self._clock()
+        state = control_service.get_state()
         self._status = ResearchRuntimeStatus(
             worker_id=worker_id,
             status="STARTING",
@@ -67,8 +67,8 @@ class ResearchRuntime:
             heartbeat_at=now,
             cycle=0,
             tasks_planned=0,
-            research_enabled=control_service.get_state().research_enabled,
-            execution_enabled=control_service.get_state().execution_enabled,
+            research_enabled=state.research_enabled,
+            execution_enabled=state.execution_enabled,
         )
 
     def _default_planner(self) -> list[ResearchTask]:
@@ -182,5 +182,4 @@ class ResearchRuntime:
             signal.signal(signal.SIGTERM, handle_stop)
             signal.signal(signal.SIGINT, handle_stop)
         except ValueError:
-            # Signal registration is only permitted from the main thread.
             pass
