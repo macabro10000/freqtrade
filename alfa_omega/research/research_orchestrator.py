@@ -40,7 +40,7 @@ def _task_id(
     regime: str,
     topic: str,
 ) -> str:
-    raw = "|".join((market, timeframe, session, regime, topic))
+    raw = f"{market}|{timeframe}|{session}|{regime}|{topic}"
     return "TASK-" + hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
 
 
