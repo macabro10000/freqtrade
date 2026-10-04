@@ -54,3 +54,23 @@ def test_runtime_records_planning_error(tmp_path: Path) -> None:
     assert status.status == "ERROR"
     assert "planner failed" in (status.last_error or "")
     assert status.execution_enabled is False
+
+
+def test_runtime_publishes_cycles_through_public_callback(tmp_path: Path) -> None:
+    service = ControlService(ControlState(execution_enabled=False))
+    runtime = ResearchRuntime(
+        service,
+        memory_store=MemoryStore(tmp_path / "memory.jsonl"),
+        interval_seconds=60,
+    )
+    published = []
+
+    def on_cycle(status: object) -> None:
+        published.append(status)
+        runtime.stop()
+
+    runtime.run(on_cycle=on_cycle)
+
+    assert len(published) == 1
+    assert published[0].status == "RESEARCHING"
+    assert runtime.status().status == "STOPPED"
