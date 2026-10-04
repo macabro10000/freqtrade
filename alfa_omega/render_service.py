@@ -19,6 +19,7 @@ from alfa_omega.control.control_service import ControlService
 from alfa_omega.control.control_store import MongoControlStateStore
 from alfa_omega.data.alpaca_crypto import AlpacaCryptoDataClient
 from alfa_omega.execution.alpaca_paper import AlpacaPaperAdapter
+from alfa_omega.research.runtime_store import MongoResearchRuntimeStore
 from alfa_omega.features.feature_engine import build_features
 from alfa_omega.features.multi_timeframe import build_market_map, describe_hierarchy
 from alfa_omega.features.proprietary_engine import build_proprietary_features
@@ -44,6 +45,7 @@ def _build_control_service() -> ControlService:
 
 
 control_service = _build_control_service()
+research_runtime_store = MongoResearchRuntimeStore.from_environment()
 
 
 class PaperSmokeRequest(BaseModel):
@@ -265,6 +267,22 @@ def btc_usd_multi_timeframe(limit: int = 1000) -> JSONResponse:
             status_code=503,
             content={"status": "unavailable", "error": str(exc)},
         )
+
+
+@app.get("/api/v1/research/status")
+def research_status() -> dict[str, Any]:
+    """Return durable research-worker status plus current control state."""
+    control = control_service.snapshot()
+    durable_status = research_runtime_store.load_status() if research_runtime_store else None
+    return {
+        "status": "ok" if durable_status is not None else "unavailable",
+        "durable": research_runtime_store is not None,
+        "control": control,
+        "research_enabled": control["research_enabled"],
+        "execution_enabled": control["execution_enabled"],
+        "worker": durable_status,
+        "timestamp": datetime.now(UTC).isoformat(),
+    }
 
 
 @app.get("/api/v1/control/state")
