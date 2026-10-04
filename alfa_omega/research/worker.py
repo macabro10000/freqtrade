@@ -3,10 +3,11 @@ from __future__ import annotations
 
 import os
 import uuid
+from dataclasses import asdict
 
 from alfa_omega.control.control_service import ControlService
 from alfa_omega.control.control_store import MongoControlStateStore
-from alfa_omega.research.runtime import ResearchRuntime
+from alfa_omega.research.runtime import ResearchRuntime, ResearchRuntimeStatus
 from alfa_omega.research.runtime_store import MongoResearchRuntimeStore
 
 
@@ -31,16 +32,16 @@ def main() -> None:
         interval_seconds=interval,
     )
 
+    def persist_cycle(status: ResearchRuntimeStatus) -> None:
+        if runtime_store is None:
+            return
+        runtime_store.save_status(asdict(status))
+        if not runtime_store.renew_lease(worker_id, lease_ttl):
+            runtime.stop()
+            raise SystemExit("Research worker lease was lost")
+
     try:
-        runtime._install_signal_handlers()
-        while not runtime._stop_event.is_set():
-            status = runtime.run_cycle()
-            if runtime_store is not None:
-                runtime_store.save_status(status.__dict__)
-                if not runtime_store.renew_lease(worker_id, lease_ttl):
-                    runtime.stop()
-                    raise SystemExit("Research worker lease was lost")
-            runtime._stop_event.wait(interval)
+        runtime.run(on_cycle=persist_cycle)
     finally:
         if runtime_store is not None:
             runtime_store.release_lease(worker_id)
