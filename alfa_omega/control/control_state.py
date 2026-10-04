@@ -10,6 +10,7 @@ from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from typing import Any
 
+
 ALLOWED_MARKETS = ("BTC/USD", "XAU/USD")
 ALLOWED_TIMEFRAMES = ("1m", "5m", "15m", "1h", "4h", "1d")
 PAPER_MODE = "PAPER"
