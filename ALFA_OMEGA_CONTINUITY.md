@@ -742,3 +742,33 @@ Debe demostrar, progresivamente:
 **datos correctos → causalidad → hipótesis → investigación → backtest → OOS → walk-forward → costos → estrés → validación → ventaja → riesgo → paper → resultado → explicación → memoria → aprendizaje validado → nueva versión.**
 
 La prioridad es construir un sistema verificable, reproducible, seguro y capaz de aprender de forma real, no aparentar que aprende.
+
+
+# 20. AVANCE — PRIMER PUENTE DE CICLO REAL DE INVESTIGACIÓN
+
+Fecha de verificación: 2026-10-04.
+
+## Verificación previa
+- GitHub Actions Run #199, ID 37199908964, commit 2ce561bfc89a618909009dd1303e0845c6f5d2d0: **success**.
+- El estado fue verificado directamente en GitHub antes de modificar el runtime.
+
+## Hallazgo
+La arquitectura ya tenía research_pipeline.py con OOS, walk-forward, costos y estrés de regímenes. El hueco real estaba en que ResearchRuntime solamente planificaba tareas y no tenía un puente para ejecutar ese pipeline.
+
+## Cambios realizados
+- Añadido alfa_omega/research/research_cycle.py.
+- ResearchCycleJob vincula ResearchTask + ResearchCandidate + ExperimentSpec + dataset/frame + regímenes + ResearchGate.
+- execute_research_cycle() reutiliza el pipeline existente; no duplica labels, backtest, OOS, walk-forward, costos ni regime stress.
+- ResearchRuntime ahora acepta cycle_runner y ejecuta una sola tarea por ciclo.
+- Resultado registrado como RESEARCH_RUNTIME_RESULT.
+- Pruebas añadidas para invocación del ciclo, error del ciclo y aislamiento de ejecución.
+- Commits realizados:
+  - 4749845bce3dd564e670d5f4679707b92c4e70ff — runtime.
+  - 4a84e57807160915234c1f6a2e340dd11968895e — research_cycle.py.
+  - 8edd4765bc27412a1c09beda7c89ba9988858ccc — tests.
+
+## Estado
+El puente ejecutable ya existe en código. **Todavía no se declara investigación 24/7 real de mercado**, porque falta alimentar ResearchCycleJob con un proveedor de dataset de mercado real, causal, reproducible y versionado.
+
+## Siguiente paso obligatorio
+Construir el adaptador de dataset real para alimentar ResearchCycleJob con datos causales y reproducibles, incluyendo fingerprint/versionado, sin conectar broker ni LIVE.
