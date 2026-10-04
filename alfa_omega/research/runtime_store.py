@@ -6,6 +6,8 @@ from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from pymongo.errors import DuplicateKeyError
+
 
 class MongoResearchRuntimeStore:
     """MongoDB store for worker lease and latest runtime status."""
@@ -44,29 +46,41 @@ class MongoResearchRuntimeStore:
             ),
         )
 
+    @staticmethod
+    def _validate_lease_inputs(worker_id: str, ttl_seconds: int) -> None:
+        if not worker_id.strip():
+            raise ValueError("worker_id must not be empty")
+        if ttl_seconds <= 0:
+            raise ValueError("ttl_seconds must be positive")
+
     def acquire_lease(self, worker_id: str, ttl_seconds: int = 120) -> bool:
+        self._validate_lease_inputs(worker_id, ttl_seconds)
         now = datetime.now(UTC)
         expires = now + timedelta(seconds=ttl_seconds)
-        result = self._collection.update_one(
-            {
-                "_id": "RESEARCH_LEASE",
-                "$or": [
-                    {"expires_at": {"$lte": now}},
-                    {"worker_id": worker_id},
-                ],
-            },
-            {
-                "$set": {
-                    "worker_id": worker_id,
-                    "acquired_at": now,
-                    "expires_at": expires,
-                }
-            },
-            upsert=True,
-        )
+        try:
+            result = self._collection.update_one(
+                {
+                    "_id": "RESEARCH_LEASE",
+                    "$or": [
+                        {"expires_at": {"$lte": now}},
+                        {"worker_id": worker_id},
+                    ],
+                },
+                {
+                    "$set": {
+                        "worker_id": worker_id,
+                        "acquired_at": now,
+                        "expires_at": expires,
+                    }
+                },
+                upsert=True,
+            )
+        except DuplicateKeyError:
+            return False
         return result.matched_count == 1 or result.upserted_id == "RESEARCH_LEASE"
 
     def renew_lease(self, worker_id: str, ttl_seconds: int = 120) -> bool:
+        self._validate_lease_inputs(worker_id, ttl_seconds)
         now = datetime.now(UTC)
         result = self._collection.update_one(
             {"_id": "RESEARCH_LEASE", "worker_id": worker_id},
@@ -75,6 +89,8 @@ class MongoResearchRuntimeStore:
         return result.matched_count == 1
 
     def release_lease(self, worker_id: str) -> None:
+        if not worker_id.strip():
+            raise ValueError("worker_id must not be empty")
         self._collection.update_one(
             {"_id": "RESEARCH_LEASE", "worker_id": worker_id},
             {"$set": {"expires_at": datetime.now(UTC)}},
