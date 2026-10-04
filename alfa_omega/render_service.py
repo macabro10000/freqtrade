@@ -1,4 +1,4 @@
-"""ALFA OMEGA Render service.
+""""ALFA OMEGA Render service.
 
 Research/control-plane service with an explicitly gated Paper smoke-cycle
 endpoint. Normal trading signals still cannot submit orders directly.
@@ -19,7 +19,6 @@ from alfa_omega.control.control_service import ControlService
 from alfa_omega.control.control_store import MongoControlStateStore
 from alfa_omega.data.alpaca_crypto import AlpacaCryptoDataClient
 from alfa_omega.execution.alpaca_paper import AlpacaPaperAdapter
-from alfa_omega.research.runtime_store import MongoResearchRuntimeStore
 from alfa_omega.features.feature_engine import build_features
 from alfa_omega.features.multi_timeframe import build_market_map, describe_hierarchy
 from alfa_omega.features.proprietary_engine import build_proprietary_features
@@ -27,6 +26,7 @@ from alfa_omega.intelligence.market_intelligence import (
     build_market_intelligence,
     latest_market_state,
 )
+from alfa_omega.research.runtime_store import MongoResearchRuntimeStore
 from alfa_omega.smc.structure_engine import build_structure_features
 
 
@@ -39,6 +39,8 @@ app = FastAPI(
 STARTED_AT = datetime.now(UTC)
 adapter = AlpacaPaperAdapter()
 data_client = AlpacaCryptoDataClient()
+
+
 def _build_control_service() -> ControlService:
     store = MongoControlStateStore.from_environment()
     return ControlService(store=store) if store is not None else ControlService()
