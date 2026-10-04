@@ -157,11 +157,17 @@ class ResearchRuntime:
     def stop(self) -> None:
         self._stop_event.set()
 
-    def run(self) -> None:
+    def run(
+        self,
+        on_cycle: Callable[[ResearchRuntimeStatus], None] | None = None,
+    ) -> None:
+        """Run continuously, optionally publishing each cycle to a durable sink."""
         self._install_signal_handlers()
         self._set_status(status="RUNNING")
         while not self._stop_event.is_set():
-            self.run_cycle()
+            current = self.run_cycle()
+            if on_cycle is not None:
+                on_cycle(current)
             self._stop_event.wait(self.interval_seconds)
         self._set_status(status="STOPPED", heartbeat_at=self._clock())
 
