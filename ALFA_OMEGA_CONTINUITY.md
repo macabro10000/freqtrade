@@ -621,6 +621,56 @@ Solo entonces avanzar.
 
 # 21. REGISTRO DE ACTUALIZACIONES
 
+## 2026-10-04 — Endurecimiento del Research Worker (en verificación)
+
+Se verificó el estado documentado anterior y se confirmó que:
+- Run #191 terminó **success** con commit `4a42d5880852600d3d931247a1412d03f0c7eeab`.
+- Run #192 terminó **success** con commit `ea19f86ead39a6b43c34981d193c08acbc3c2f01`, correspondiente a esta continuidad maestra.
+
+Siguiente trabajo ejecutado directamente en GitHub:
+- `alfa_omega/research/runtime.py`
+  - se añadió una API pública `run(on_cycle=...)`;
+  - el worker ya no necesita acceder a `_stop_event` ni `_install_signal_handlers`;
+  - se mantiene la separación estricta entre investigación y ejecución.
+- `alfa_omega/research/runtime_store.py`
+  - validación explícita de `worker_id` y TTL;
+  - carrera de adquisición inicial endurecida capturando `DuplicateKeyError`;
+  - renovación/liberación mantienen identidad del worker.
+- `alfa_omega/research/worker.py`
+  - usa `runtime.run()` público;
+  - persiste `ResearchRuntimeStatus` con `asdict()`;
+  - renueva lease mediante callback;
+  - libera lease al finalizar.
+- `tests/alfa_omega/test_research_runtime.py`
+  - prueba añadida para verificar publicación de ciclos mediante la API pública.
+
+Commits consecutivos:
+- `b49fe17f16588743707741b37dd09d513b2b06e6`
+- `413e26978da81d7245d2e54d47b1e848fdb1d09b`
+- `2a6c9febb6104992e37d559fcca12677a30d4ad1`
+- `ff90f90597e7c08bbaa94b6158ec9ac442865b85`
+
+CI al momento de esta actualización:
+- Run #193: **in_progress**
+- Run #194: **in_progress**
+- Run #195: **in_progress**
+- Run #196: **queued**
+
+No se declara este bloque terminado hasta verificar que el CI correspondiente al estado final quede verde.
+
+### Siguiente paso después de CI verde
+Implementar y probar `GET /api/v1/research/status` para que el panel pueda observar:
+- estado del research worker;
+- heartbeat;
+- ciclo;
+- tareas planificadas;
+- research ON/OFF;
+- execution ON/OFF;
+- último error;
+- estado durable de Mongo cuando esté disponible.
+
+Después de ese endpoint, continuar con la conexión real del runtime al pipeline de investigación/experimentación. El runtime actual todavía planifica tareas y registra actividad; **no debe presentarse como aprendizaje autónomo completo**.
+
 ## 2026-10-04 — Continuidad maestra creada
 
 Se estableció este archivo como fuente de continuidad para futuros chats.
