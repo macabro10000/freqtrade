@@ -6,9 +6,10 @@ state will be introduced through the database layer before multi-instance use.
 """
 from __future__ import annotations
 
+from typing import Any
+
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
-from typing import Any
 
 ALLOWED_MARKETS = ("BTC/USD", "XAU/USD")
 ALLOWED_TIMEFRAMES = ("1m", "5m", "15m", "1h", "4h", "1d")
