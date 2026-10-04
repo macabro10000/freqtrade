@@ -1,8 +1,9 @@
 """24/7 research runtime for ALFA OMEGA.
 
 The runtime is intentionally separate from FastAPI and broker execution.
-It plans research work, records heartbeats, and can be stopped gracefully.
-It never submits orders and never enables execution.
+It plans research work, can execute one injected research-cycle task per
+heartbeat, records results, and can be stopped gracefully. It never submits
+orders and never enables execution.
 """
 from __future__ import annotations
 
@@ -11,13 +12,11 @@ import threading
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
+from typing import Any
 
 from alfa_omega.control.control_service import ControlService
 from alfa_omega.memory.memory_store import MemoryStore
-from alfa_omega.research.research_orchestrator import (
-    ResearchTask,
-    plan_research_tasks,
-)
+from alfa_omega.research.research_orchestrator import ResearchTask, plan_research_tasks
 
 
 @dataclass(frozen=True)
@@ -28,13 +27,21 @@ class ResearchRuntimeStatus:
     heartbeat_at: str
     cycle: int
     tasks_planned: int
+    tasks_executed: int
     research_enabled: bool
     execution_enabled: bool
+    last_task_id: str | None = None
+    last_result_state: str | None = None
     last_error: str | None = None
 
 
 class ResearchRuntime:
-    """Long-running, execution-independent research process."""
+    """Long-running, execution-independent research process.
+
+    cycle_runner is an injected research-only adapter. It receives one
+    planned task per cycle and may call the existing dataset/experiment/OOS/
+    walk-forward pipeline. The runtime itself never knows how to trade.
+    """
 
     def __init__(
         self,
@@ -44,17 +51,17 @@ class ResearchRuntime:
         worker_id: str = "research-worker-1",
         interval_seconds: float = 30.0,
         planner: Callable[[], list[ResearchTask]] | None = None,
+        cycle_runner: Callable[[ResearchTask], Any] | None = None,
         clock: Callable[[], str] | None = None,
     ) -> None:
         if interval_seconds <= 0:
             raise ValueError("interval_seconds must be positive")
         self.control_service = control_service
-        self.memory_store = memory_store or MemoryStore(
-            "alfa_omega/logs/research_runtime.jsonl"
-        )
+        self.memory_store = memory_store or MemoryStore("alfa_omega/logs/research_runtime.jsonl")
         self.worker_id = worker_id
         self.interval_seconds = interval_seconds
         self._planner = planner or self._default_planner
+        self._cycle_runner = cycle_runner
         self._clock = clock or (lambda: datetime.now(UTC).isoformat())
         self._stop_event = threading.Event()
         self._status_lock = threading.Lock()
@@ -67,6 +74,7 @@ class ResearchRuntime:
             heartbeat_at=now,
             cycle=0,
             tasks_planned=0,
+            tasks_executed=0,
             research_enabled=state.research_enabled,
             execution_enabled=state.execution_enabled,
         )
@@ -88,6 +96,18 @@ class ResearchRuntime:
             data.update(changes)
             self._status = ResearchRuntimeStatus(**data)
 
+    @staticmethod
+    def _result_state(result: Any) -> str:
+        if isinstance(result, dict):
+            for key in ("final_state", "status", "state"):
+                if key in result:
+                    return str(result[key])
+        for key in ("final_state", "status", "state"):
+            value = getattr(result, key, None)
+            if value is not None:
+                return str(value)
+        return "COMPLETED"
+
     def heartbeat(self) -> ResearchRuntimeStatus:
         state = self.control_service.get_state()
         now = self._clock()
@@ -101,38 +121,51 @@ class ResearchRuntime:
             last_error=None,
         )
         current = self.status()
-        self.memory_store.remember(
-            "RESEARCH_RUNTIME_HEARTBEAT",
-            asdict(current),
-            source="research_runtime",
-        )
+        self.memory_store.remember("RESEARCH_RUNTIME_HEARTBEAT", asdict(current), source="research_runtime")
         return current
 
     def run_cycle(self) -> ResearchRuntimeStatus:
         state = self.control_service.get_state()
         if not state.research_enabled:
             return self.heartbeat()
-
         try:
             tasks = self._planner()
             status = self.status()
-            now = self._clock()
             self._set_status(
                 status="RESEARCHING",
-                heartbeat_at=now,
+                heartbeat_at=self._clock(),
                 cycle=status.cycle + 1,
                 tasks_planned=len(tasks),
                 research_enabled=True,
                 execution_enabled=state.execution_enabled,
                 last_error=None,
             )
+            if self._cycle_runner is not None and tasks:
+                task = tasks[0]
+                result = self._cycle_runner(task)
+                current = self.status()
+                self._set_status(
+                    tasks_executed=current.tasks_executed + 1,
+                    last_task_id=task.task_id,
+                    last_result_state=self._result_state(result),
+                )
+                self.memory_store.remember(
+                    "RESEARCH_RUNTIME_RESULT",
+                    {
+                        **asdict(self.status()),
+                        "task_id": task.task_id,
+                        "result": (
+                            asdict(result)
+                            if hasattr(result, "__dataclass_fields__")
+                            else result
+                        ),
+                    },
+                    source="research_runtime",
+                )
             current = self.status()
             self.memory_store.remember(
                 "RESEARCH_RUNTIME_CYCLE",
-                {
-                    **asdict(current),
-                    "task_ids": [task.task_id for task in tasks],
-                },
+                {**asdict(current), "task_ids": [task.task_id for task in tasks]},
                 source="research_runtime",
             )
             return current
@@ -147,21 +180,13 @@ class ResearchRuntime:
                 last_error=f"{type(exc).__name__}: {exc}",
             )
             current = self.status()
-            self.memory_store.remember(
-                "RESEARCH_RUNTIME_ERROR",
-                asdict(current),
-                source="research_runtime",
-            )
+            self.memory_store.remember("RESEARCH_RUNTIME_ERROR", asdict(current), source="research_runtime")
             return current
 
     def stop(self) -> None:
         self._stop_event.set()
 
-    def run(
-        self,
-        on_cycle: Callable[[ResearchRuntimeStatus], None] | None = None,
-    ) -> None:
-        """Run continuously, optionally publishing each cycle to a durable sink."""
+    def run(self, on_cycle: Callable[[ResearchRuntimeStatus], None] | None = None) -> None:
         self._install_signal_handlers()
         self._set_status(status="RUNNING")
         while not self._stop_event.is_set():
@@ -175,15 +200,10 @@ class ResearchRuntime:
         def handle_stop(signum: int, _frame: object) -> None:
             self.memory_store.remember(
                 "RESEARCH_RUNTIME_SHUTDOWN",
-                {
-                    "worker_id": self.worker_id,
-                    "signal": signum,
-                    "timestamp": self._clock(),
-                },
+                {"worker_id": self.worker_id, "signal": signum, "timestamp": self._clock()},
                 source="research_runtime",
             )
             self.stop()
-
         try:
             signal.signal(signal.SIGTERM, handle_stop)
             signal.signal(signal.SIGINT, handle_stop)
