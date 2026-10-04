@@ -772,3 +772,57 @@ El puente ejecutable ya existe en código. **Todavía no se declara investigaci�
 
 ## Siguiente paso obligatorio
 Construir el adaptador de dataset real para alimentar ResearchCycleJob con datos causales y reproducibles, incluyendo fingerprint/versionado, sin conectar broker ni LIVE.
+
+
+## 2026-10-04 — Experiment Lab añadido
+
+Se investigó el estado actual del sistema de research antes de crear una nueva capa. Ya existen:
+- `research_orchestrator.py` para planificar tareas;
+- `research_cycle.py` y `research_pipeline.py` para el flujo de investigación;
+- `experiment_runner.py` para contratos deterministas de experimentos;
+- `experiment_evaluator.py` para evaluación;
+- `validation.py`, `validation_engine.py` y `walk_forward.py`;
+- `learning_loop.py` para convertir resultados y fallos en conocimiento de investigación;
+- `runtime.py` y `worker.py` para la ejecución continua del runtime.
+
+Para evitar mezclar ideas nuevas con producción se añadió un área aislada:
+
+- `alfa_omega/lab/README.md`
+- `alfa_omega/lab/__init__.py`
+- `alfa_omega/lab/experiment.py`
+- `tests/alfa_omega/test_experiment_lab.py`
+
+El Experiment Lab queda definido como un espacio de investigación aislado para:
+- indicadores nuevos;
+- features alternativas;
+- patrones;
+- modelos;
+- ideas de ejecución;
+- mejoras de código;
+- herramientas;
+- hipótesis externas;
+- experimentos que podrían no funcionar.
+
+Regla fundamental:
+**un experimento de Lab nunca se incorpora directamente a producción ni puede llamar al broker.**
+
+Su ciclo es:
+
+IDEA → HYPOTHESIS → EXPERIMENT SPEC → IMPLEMENTACIÓN AISLADA → TEST → BACKTEST → OOS → WALK-FORWARD → COSTOS/SLIPPAGE → REGIME STRESS → SELECTION-BIAS REVIEW → FINAL HOLDOUT → VERDICT.
+
+Los fallos se conservan como conocimiento negativo, restricciones o regresiones cuando sean útiles.
+
+La finalidad económica del proyecto queda documentada como objetivo de negocio, pero ningún resultado histórico debe presentarse como garantía de rentabilidad futura.
+
+### Estado de CI después de este cambio
+
+Los commits del runtime y del puente de research están generando nuevas ejecuciones de CI. No declarar este bloque terminado hasta verificar las ejecuciones correspondientes al estado final del código.
+
+### Siguiente bloque
+
+1. Verificar CI del puente de research.
+2. Verificar que el Experiment Lab pase tests y Ruff.
+3. Conectar el runtime con un ciclo de investigación real y auditable.
+4. Exponer el estado del research para el futuro panel.
+5. Diseñar el panel como capa de control, no como sustituto del motor.
+6. Mantener Research 24/7 separado de Execution.
