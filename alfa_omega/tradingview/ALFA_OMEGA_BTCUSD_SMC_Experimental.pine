@@ -56,11 +56,16 @@ displacement = not na(avgRange) and barRange > avgRange * 1.5
 
 barsSinceSweepLow = ta.barssince(sweepLow)
 barsSinceSweepHigh = ta.barssince(sweepHigh)
+barsSinceBullFvg = ta.barssince(bullFvg)
+barsSinceBearFvg = ta.barssince(bearFvg)
 recentBullSweep = not na(barsSinceSweepLow) and barsSinceSweepLow <= setupWindow
 recentBearSweep = not na(barsSinceSweepHigh) and barsSinceSweepHigh <= setupWindow
+// Require the directional FVG to form after the sweep, not before it.
+bullFvgAfterSweep = not na(barsSinceBullFvg) and not na(barsSinceSweepLow) and barsSinceBullFvg <= barsSinceSweepLow and barsSinceBullFvg <= setupWindow
+bearFvgAfterSweep = not na(barsSinceBearFvg) and not na(barsSinceSweepHigh) and barsSinceBearFvg <= barsSinceSweepHigh and barsSinceBearFvg <= setupWindow
 
-longSignal = barstate.isconfirmed and recentBullSweep and bullBos and bullFvg and displacement and volumeOk
-shortSignal = barstate.isconfirmed and recentBearSweep and bearBos and bearFvg and displacement and volumeOk
+longSignal = barstate.isconfirmed and recentBullSweep and bullBos and bullFvgAfterSweep and displacement and volumeOk
+shortSignal = barstate.isconfirmed and recentBearSweep and bearBos and bearFvgAfterSweep and displacement and volumeOk
 
 var float entryPrice = na
 var float stopPrice = na
