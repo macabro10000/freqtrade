@@ -1,0 +1,107 @@
+//@version=6
+indicator("ALFA OMEGA BTCUSD SMC — Experimental", overlay=true, max_labels_count=300)
+
+// Research prototype only. Signals are confirmed at candle close.
+// Validate independently before any live use.
+
+swingLen = input.int(3, "Swing confirmation bars", minval=1, maxval=20)
+liquidityLen = input.int(20, "Liquidity lookback", minval=5, maxval=200)
+setupWindow = input.int(8, "Sweep-to-confirmation window", minval=1, maxval=30)
+atrLen = input.int(14, "ATR length", minval=2)
+stopAtr = input.float(1.0, "Stop distance (ATR)", minval=0.1, step=0.1)
+targetR1 = input.float(1.0, "Target 1 (R)", minval=0.1, step=0.1)
+targetR2 = input.float(2.0, "Target 2 (R)", minval=0.1, step=0.1)
+targetR3 = input.float(3.0, "Target 3 (R)", minval=0.1, step=0.1)
+useVolume = input.bool(true, "Require volume confirmation")
+volumeLen = input.int(20, "Volume average length", minval=2)
+volumeMult = input.float(1.2, "Volume multiplier", minval=0.1, step=0.1)
+showLevels = input.bool(true, "Show latest entry / SL / TP levels")
+
+atr = ta.atr(atrLen)
+volAvg = ta.sma(volume, volumeLen)
+volumeOk = not useVolume or (not na(volAvg) and volume > volAvg * volumeMult)
+
+// Confirmed swing points: pivot is only known swingLen bars after its occurrence.
+ph = ta.pivothigh(high, swingLen, swingLen)
+pl = ta.pivotlow(low, swingLen, swingLen)
+var float lastSwingHigh = na
+var float lastSwingLow = na
+if not na(ph)
+    lastSwingHigh := ph
+if not na(pl)
+    lastSwingLow := pl
+
+bullBos = not na(lastSwingHigh) and ta.crossover(close, lastSwingHigh)
+bearBos = not na(lastSwingLow) and ta.crossunder(close, lastSwingLow)
+
+var int structureBias = 0
+prevBias = structureBias
+if bullBos
+    structureBias := 1
+else if bearBos
+    structureBias := -1
+bullChoch = bullBos and prevBias == -1
+bearChoch = bearBos and prevBias == 1
+
+priorHigh = ta.highest(high, liquidityLen)[1]
+priorLow = ta.lowest(low, liquidityLen)[1]
+sweepHigh = not na(priorHigh) and high > priorHigh and close < priorHigh
+sweepLow = not na(priorLow) and low < priorLow and close > priorLow
+
+bullFvg = bar_index >= 2 and low > high[2]
+bearFvg = bar_index >= 2 and high < low[2]
+barRange = high - low
+avgRange = ta.sma(barRange, 20)[1]
+displacement = not na(avgRange) and barRange > avgRange * 1.5
+
+barsSinceSweepLow = ta.barssince(sweepLow)
+barsSinceSweepHigh = ta.barssince(sweepHigh)
+recentBullSweep = not na(barsSinceSweepLow) and barsSinceSweepLow <= setupWindow
+recentBearSweep = not na(barsSinceSweepHigh) and barsSinceSweepHigh <= setupWindow
+
+longSignal = barstate.isconfirmed and recentBullSweep and bullBos and bullFvg and displacement and volumeOk
+shortSignal = barstate.isconfirmed and recentBearSweep and bearBos and bearFvg and displacement and volumeOk
+
+var float entryPrice = na
+var float stopPrice = na
+var float tp1 = na
+var float tp2 = na
+var float tp3 = na
+var int lastDirection = 0
+
+if longSignal and atr > 0
+    entryPrice := close
+    stopPrice := close - atr * stopAtr
+    risk = entryPrice - stopPrice
+    tp1 := entryPrice + risk * targetR1
+    tp2 := entryPrice + risk * targetR2
+    tp3 := entryPrice + risk * targetR3
+    lastDirection := 1
+
+if shortSignal and atr > 0
+    entryPrice := close
+    stopPrice := close + atr * stopAtr
+    risk = stopPrice - entryPrice
+    tp1 := entryPrice - risk * targetR1
+    tp2 := entryPrice - risk * targetR2
+    tp3 := entryPrice - risk * targetR3
+    lastDirection := -1
+
+plotshape(longSignal, title="LONG", style=shape.labelup, location=location.belowbar, text="LONG", color=color.new(color.lime, 0), textcolor=color.black, size=size.small)
+plotshape(shortSignal, title="SHORT", style=shape.labeldown, location=location.abovebar, text="SHORT", color=color.new(color.red, 0), textcolor=color.white, size=size.small)
+plotshape(bullChoch, title="Bullish CHOCH", style=shape.circle, location=location.belowbar, color=color.aqua, size=size.tiny, text="CH")
+plotshape(bearChoch, title="Bearish CHOCH", style=shape.circle, location=location.abovebar, color=color.orange, size=size.tiny, text="CH")
+
+plot(showLevels ? entryPrice : na, "Last Entry", color=color.blue, linewidth=2, style=plot.style_linebr)
+plot(showLevels ? stopPrice : na, "Stop Loss", color=color.red, linewidth=2, style=plot.style_linebr)
+plot(showLevels ? tp1 : na, "TP1", color=color.new(color.green, 15), style=plot.style_linebr)
+plot(showLevels ? tp2 : na, "TP2", color=color.new(color.green, 35), style=plot.style_linebr)
+plot(showLevels ? tp3 : na, "TP3", color=color.new(color.green, 55), style=plot.style_linebr)
+
+alertcondition(longSignal, "ALFA OMEGA LONG", "Confirmed LONG: sweep + bullish BOS + FVG + displacement")
+alertcondition(shortSignal, "ALFA OMEGA SHORT", "Confirmed SHORT: sweep + bearish BOS + FVG + displacement")
+
+// Visual diagnostics in the Data Window.
+plot(structureBias, "Structure Bias (1 bullish / -1 bearish)", display=display.data_window)
+plot(sweepLow ? 1 : 0, "Sell-side liquidity sweep", display=display.data_window)
+plot(sweepHigh ? 1 : 0, "Buy-side liquidity sweep", display=display.data_window)
