@@ -1,8 +1,9 @@
 //@version=6
-indicator("ALFA OMEGA BTCUSD SMC — Experimental", overlay=true, max_labels_count=300)
+indicator("ALFA OMEGA BTCUSD SMC — Research v2", overlay=true, max_labels_count=400, max_boxes_count=50)
 
-// Research prototype only. Signals are confirmed at candle close.
-// Validate independently before any live use.
+// Research indicator only. No orders are sent.
+// Event markers are confirmed at candle close. HTF filters use the previous
+// fully closed HTF candle to avoid realtime repainting.
 
 swingLen = input.int(3, "Swing confirmation bars", minval=1, maxval=20)
 liquidityLen = input.int(20, "Liquidity lookback", minval=5, maxval=200)
@@ -15,33 +16,55 @@ targetR3 = input.float(3.0, "Target 3 (R)", minval=0.1, step=0.1)
 useVolume = input.bool(true, "Require volume confirmation")
 volumeLen = input.int(20, "Volume average length", minval=2)
 volumeMult = input.float(1.2, "Volume multiplier", minval=0.1, step=0.1)
+minSignalScore = input.int(80, "Minimum confluence score", minval=50, maxval=100, step=5)
+useHtfFilter = input.bool(false, "Use confirmed higher-timeframe trend filter")
+htfTf = input.timeframe("60", "Higher timeframe")
+htfEmaLen = input.int(50, "Higher-timeframe EMA", minval=2)
+usePdFilter = input.bool(false, "Use premium/discount filter")
+eqTolerance = input.float(0.10, "Equal high/low tolerance (ATR)", minval=0.01, maxval=0.5, step=0.01)
+obLookback = input.int(20, "Order block search lookback", minval=2, maxval=100)
+obExtend = input.int(80, "Order block extension (bars)", minval=5, maxval=500)
+showOrderBlocks = input.bool(true, "Show latest order blocks")
 showLevels = input.bool(true, "Show latest entry / SL / TP levels")
+
+if useHtfFilter and timeframe.in_seconds(htfTf) <= timeframe.in_seconds()
+    runtime.error("Higher timeframe must be greater than the chart timeframe.")
 
 atr = ta.atr(atrLen)
 volAvg = ta.sma(volume, volumeLen)
 volumeOk = not useVolume or (not na(volAvg) and volume > volAvg * volumeMult)
+barRange = high - low
+avgRange = ta.sma(barRange, 20)[1]
+displacement = not na(avgRange) and barRange > avgRange * 1.5
 
-// Confirmed swing points: pivot is only known swingLen bars after its occurrence.
 ph = ta.pivothigh(high, swingLen, swingLen)
 pl = ta.pivotlow(low, swingLen, swingLen)
 var float lastSwingHigh = na
 var float lastSwingLow = na
+var float previousPivotHigh = na
+var float previousPivotLow = na
+bool equalHighEvent = false
+bool equalLowEvent = false
+
 if not na(ph)
+    equalHighEvent := not na(previousPivotHigh) and not na(atr) and math.abs(ph - previousPivotHigh) <= atr * eqTolerance
+    previousPivotHigh := ph
     lastSwingHigh := ph
 if not na(pl)
+    equalLowEvent := not na(previousPivotLow) and not na(atr) and math.abs(pl - previousPivotLow) <= atr * eqTolerance
+    previousPivotLow := pl
     lastSwingLow := pl
 
 bullBos = not na(lastSwingHigh) and ta.crossover(close, lastSwingHigh)
 bearBos = not na(lastSwingLow) and ta.crossunder(close, lastSwingLow)
-
 var int structureBias = 0
-prevBias = structureBias
+previousBias = structureBias
 if bullBos
     structureBias := 1
 else if bearBos
     structureBias := -1
-bullChoch = bullBos and prevBias == -1
-bearChoch = bearBos and prevBias == 1
+bullChoch = bullBos and previousBias == -1
+bearChoch = bearBos and previousBias == 1
 
 priorHigh = ta.highest(high, liquidityLen)[1]
 priorLow = ta.lowest(low, liquidityLen)[1]
@@ -50,22 +73,65 @@ sweepLow = not na(priorLow) and low < priorLow and close > priorLow
 
 bullFvg = bar_index >= 2 and low > high[2]
 bearFvg = bar_index >= 2 and high < low[2]
-barRange = high - low
-avgRange = ta.sma(barRange, 20)[1]
-displacement = not na(avgRange) and barRange > avgRange * 1.5
-
 barsSinceSweepLow = ta.barssince(sweepLow)
 barsSinceSweepHigh = ta.barssince(sweepHigh)
 barsSinceBullFvg = ta.barssince(bullFvg)
 barsSinceBearFvg = ta.barssince(bearFvg)
 recentBullSweep = not na(barsSinceSweepLow) and barsSinceSweepLow <= setupWindow
 recentBearSweep = not na(barsSinceSweepHigh) and barsSinceSweepHigh <= setupWindow
-// Require the directional FVG to form after the sweep, not before it.
 bullFvgAfterSweep = not na(barsSinceBullFvg) and not na(barsSinceSweepLow) and barsSinceBullFvg <= barsSinceSweepLow and barsSinceBullFvg <= setupWindow
 bearFvgAfterSweep = not na(barsSinceBearFvg) and not na(barsSinceSweepHigh) and barsSinceBearFvg <= barsSinceSweepHigh and barsSinceBearFvg <= setupWindow
 
-longSignal = barstate.isconfirmed and recentBullSweep and bullBos and bullFvgAfterSweep and displacement and volumeOk
-shortSignal = barstate.isconfirmed and recentBearSweep and bearBos and bearFvgAfterSweep and displacement and volumeOk
+// Approximate order block: last opposite-colour candle before the BOS candle.
+var float lastBearHigh = na
+var float lastBearLow = na
+var int lastBearBar = na
+var float lastBullHigh = na
+var float lastBullLow = na
+var int lastBullBar = na
+var box bullishObBox = na
+var box bearishObBox = na
+
+if showOrderBlocks and barstate.isconfirmed and bullBos and not na(lastBearBar) and bar_index - lastBearBar <= obLookback
+    if not na(bullishObBox)
+        box.delete(bullishObBox)
+    bullishObBox := box.new(left=lastBearBar, top=lastBearHigh, right=bar_index + obExtend, bottom=lastBearLow, xloc=xloc.bar_index, bgcolor=color.new(color.lime, 88), border_color=color.new(color.lime, 35))
+if showOrderBlocks and barstate.isconfirmed and bearBos and not na(lastBullBar) and bar_index - lastBullBar <= obLookback
+    if not na(bearishObBox)
+        box.delete(bearishObBox)
+    bearishObBox := box.new(left=lastBullBar, top=lastBullHigh, right=bar_index + obExtend, bottom=lastBullLow, xloc=xloc.bar_index, bgcolor=color.new(color.red, 88), border_color=color.new(color.red, 35))
+if not na(bullishObBox)
+    box.set_right(bullishObBox, bar_index + obExtend)
+if not na(bearishObBox)
+    box.set_right(bearishObBox, bar_index + obExtend)
+
+// Update after BOS processing so the current candle cannot be its own prior OB.
+if close < open
+    lastBearHigh := high
+    lastBearLow := low
+    lastBearBar := bar_index
+if close > open
+    lastBullHigh := high
+    lastBullLow := low
+    lastBullBar := bar_index
+
+// Previous closed HTF candle only: intentional one-bar confirmation delay.
+htfCloseConfirmed = request.security(syminfo.tickerid, htfTf, close[1], gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_on)
+htfEmaConfirmed = request.security(syminfo.tickerid, htfTf, ta.ema(close, htfEmaLen)[1], gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_on)
+htfBull = htfCloseConfirmed > htfEmaConfirmed
+htfBear = htfCloseConfirmed < htfEmaConfirmed
+htfLongOk = not useHtfFilter or htfBull
+htfShortOk = not useHtfFilter or htfBear
+
+rangeMid = not na(lastSwingHigh) and not na(lastSwingLow) ? (lastSwingHigh + lastSwingLow) / 2.0 : na
+discountOk = not usePdFilter or (not na(rangeMid) and close < rangeMid)
+premiumOk = not usePdFilter or (not na(rangeMid) and close > rangeMid)
+
+// Confluence score is a rule score, NOT a win probability.
+longScore = (recentBullSweep ? 25 : 0) + (bullBos ? 25 : 0) + (bullFvgAfterSweep ? 20 : 0) + (displacement ? 15 : 0) + (volumeOk ? 15 : 0)
+shortScore = (recentBearSweep ? 25 : 0) + (bearBos ? 25 : 0) + (bearFvgAfterSweep ? 20 : 0) + (displacement ? 15 : 0) + (volumeOk ? 15 : 0)
+longSignal = barstate.isconfirmed and longScore >= minSignalScore and discountOk and htfLongOk
+shortSignal = barstate.isconfirmed and shortScore >= minSignalScore and premiumOk and htfShortOk
 
 var float entryPrice = na
 var float stopPrice = na
@@ -73,7 +139,6 @@ var float tp1 = na
 var float tp2 = na
 var float tp3 = na
 var int lastDirection = 0
-
 if longSignal and atr > 0
     entryPrice := close
     stopPrice := close - atr * stopAtr
@@ -82,7 +147,6 @@ if longSignal and atr > 0
     tp2 := entryPrice + risk * targetR2
     tp3 := entryPrice + risk * targetR3
     lastDirection := 1
-
 if shortSignal and atr > 0
     entryPrice := close
     stopPrice := close + atr * stopAtr
@@ -96,17 +160,24 @@ plotshape(longSignal, title="LONG", style=shape.labelup, location=location.below
 plotshape(shortSignal, title="SHORT", style=shape.labeldown, location=location.abovebar, text="SHORT", color=color.new(color.red, 0), textcolor=color.white, size=size.small)
 plotshape(bullChoch, title="Bullish CHOCH", style=shape.circle, location=location.belowbar, color=color.aqua, size=size.tiny, text="CH")
 plotshape(bearChoch, title="Bearish CHOCH", style=shape.circle, location=location.abovebar, color=color.orange, size=size.tiny, text="CH")
+plotshape(equalHighEvent, title="Equal Highs", style=shape.triangledown, location=location.abovebar, color=color.fuchsia, size=size.tiny, text="EQH")
+plotshape(equalLowEvent, title="Equal Lows", style=shape.triangleup, location=location.belowbar, color=color.aqua, size=size.tiny, text="EQL")
 
 plot(showLevels ? entryPrice : na, "Last Entry", color=color.blue, linewidth=2, style=plot.style_linebr)
 plot(showLevels ? stopPrice : na, "Stop Loss", color=color.red, linewidth=2, style=plot.style_linebr)
 plot(showLevels ? tp1 : na, "TP1", color=color.new(color.green, 15), style=plot.style_linebr)
 plot(showLevels ? tp2 : na, "TP2", color=color.new(color.green, 35), style=plot.style_linebr)
 plot(showLevels ? tp3 : na, "TP3", color=color.new(color.green, 55), style=plot.style_linebr)
+plot(usePdFilter ? rangeMid : na, "Premium / Discount midpoint", color=color.new(color.yellow, 35), style=plot.style_linebr)
 
-alertcondition(longSignal, "ALFA OMEGA LONG", "Confirmed LONG: sweep + bullish BOS + FVG + displacement")
-alertcondition(shortSignal, "ALFA OMEGA SHORT", "Confirmed SHORT: sweep + bearish BOS + FVG + displacement")
-
-// Visual diagnostics in the Data Window.
 plot(structureBias, "Structure Bias (1 bullish / -1 bearish)", display=display.data_window)
+plot(longScore, "Long confluence score (0-100)", display=display.data_window)
+plot(shortScore, "Short confluence score (0-100)", display=display.data_window)
 plot(sweepLow ? 1 : 0, "Sell-side liquidity sweep", display=display.data_window)
 plot(sweepHigh ? 1 : 0, "Buy-side liquidity sweep", display=display.data_window)
+plot(htfBull ? 1 : htfBear ? -1 : 0, "Confirmed HTF bias", display=display.data_window)
+
+alertcondition(longSignal, "ALFA OMEGA LONG", "Confirmed LONG: liquidity sweep + BOS + post-sweep FVG + displacement + volume")
+alertcondition(shortSignal, "ALFA OMEGA SHORT", "Confirmed SHORT: liquidity sweep + BOS + post-sweep FVG + displacement + volume")
+alertcondition(equalHighEvent, "ALFA OMEGA EQH", "Equal highs detected on a confirmed swing")
+alertcondition(equalLowEvent, "ALFA OMEGA EQL", "Equal lows detected on a confirmed swing")

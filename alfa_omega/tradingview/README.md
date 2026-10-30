@@ -2,35 +2,45 @@
 
 ## Estado del indicador
 
-Archivo: `ALFA_OMEGA_BTCUSD_SMC_Experimental.pine`
+Archivo: `alfa_omega/tradingview/ALFA_OMEGA_BTCUSD_SMC_Experimental.pine`
 
-- Pine Script v6.
-- Indicador visual; no envía órdenes ni conecta una cuenta de exchange.
-- Señales evaluadas al cierre de vela.
-- Componentes: swings confirmados, BOS/CHOCH, barridos de liquidez, FVG, desplazamiento, filtro de volumen, SL y TP1/TP2/TP3.
-- El FVG debe aparecer después del barrido y dentro de la ventana de confirmación configurada.
+- Pine Script v6, indicador visual; no envía órdenes.
+- Señales y eventos de estructura confirmados al cierre de vela.
+- Swings confirmados, BOS/CHOCH y sesgo estructural.
+- Barridos de liquidez con niveles previos a la vela actual.
+- FVG de tres velas y filtro de desplazamiento.
+- FVG direccional debe aparecer después del barrido.
+- Equal Highs / Equal Lows mediante tolerancia ATR.
+- Últimos Order Blocks aproximados: última vela contraria anterior al BOS, con búsqueda limitada.
+- Filtro opcional de tendencia HTF usando exclusivamente la vela HTF anterior cerrada.
+- Filtro opcional de premium/discount basado en el último swing high/low confirmado.
+- Puntuación de confluencia de 0 a 100. **No es una probabilidad de ganar.**
+- Niveles indicativos de entrada, SL y TP1/TP2/TP3 calculados con ATR.
 
 ## Validación pendiente
 
-Este repositorio no ejecuta el compilador de TradingView. Por tanto, el archivo está guardado en GitHub, pero **no se declara compilado ni validado** hasta abrirlo en Pine Editor y añadirlo a un gráfico.
+El repositorio no ejecuta el compilador de TradingView. El código guardado no se declara compilado hasta abrirlo en Pine Editor y añadirlo a un gráfico.
 
-Protocolo mínimo, sin coste:
-
-1. Abrir TradingView y seleccionar el gráfico BTCUSD del proveedor que se vaya a evaluar.
+Protocolo manual sin coste:
+1. Abrir BTCUSD en el proveedor exacto que se vaya a estudiar.
 2. Abrir Pine Editor, pegar el contenido del archivo y pulsar Add to chart.
-3. Registrar cualquier error de compilación exactamente como aparece.
-4. Revisar señales en BTCUSD 15m y 1h; confirmar que solo aparecen al cierre de vela.
-5. Crear alertas LONG y SHORT y comprobarlas en modo simulado.
-6. Exportar/registrar resultados de backtest independientes antes de considerar cualquier uso operativo.
+3. Registrar cualquier error de compilación exactamente.
+4. Probar 5m, 15m y 1h, inicialmente con los filtros opcionales desactivados.
+5. Comprobar que EQH/EQL y Order Blocks aparecen solo al confirmarse el evento.
+6. Comprobar alertas en modo simulado.
+7. Comparar señales con el motor Python y backtesting independiente.
 
 ## Limitaciones conocidas
 
 - No hay todavía backtest validado de este Pine Script.
-- El filtro de volumen puede no ser comparable entre proveedores de BTCUSD.
-- Los niveles SL/TP muestran los del último setup; no representan una posición abierta ni gestionan salidas.
-- El indicador no incluye todavía un motor de sizing, comisiones, slippage ni gestión de posiciones.
-- Las cifras preliminares de otras pruebas no deben atribuirse a este indicador.
+- No debe confundirse BTCUSD spot con BTCUSD_PERP COIN-M ni con BTCUSDT USD-M.
+- El filtro de volumen depende del proveedor y del tipo de mercado.
+- Order Blocks son una definición mecánica aproximada, no prueba de actividad institucional.
+- El score representa confluencia de reglas, no probabilidad calibrada.
+- SL/TP muestran niveles del último setup; no gestionan una posición abierta.
+- No incorpora sizing, comisiones, slippage ni ejecución.
+- Los datos HTF usan la última vela cerrada y por ello tienen un retraso intencional.
 
 ## Seguridad
 
-Investigación y alertas visuales solamente. No conectar claves API ni activar ejecución automática. No usar con dinero real hasta completar pruebas, costes y validación fuera de muestra.
+Investigación y alertas visuales solamente. No conectar claves API ni activar ejecución automática. No usar con dinero real hasta completar compilación, pruebas, costes y validación fuera de muestra.
